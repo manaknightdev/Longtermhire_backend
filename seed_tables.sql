@@ -1,0 +1,15 @@
+INSERT INTO longtermhire_job VALUES (NULL, 'random_string_0', '{"key": "value"}', 'random_string_0', 10, 0, '2025-07-16}', '2025-07-16}');
+INSERT INTO longtermhire_job VALUES (NULL, 'random_string_1', '{"key": "value"}', 'random_string_1', 95, 0, '2025-07-16}', '2025-07-16}');
+INSERT INTO longtermhire_job VALUES (NULL, 'random_string_2', '{"key": "value"}', 'random_string_2', 55, 0, '2025-07-16}', '2025-07-16}');
+INSERT INTO longtermhire_uploads VALUES (NULL, 'random_string_0', 'random_string_0', 1, 58, 26, 0, '2025-07-16}', '2025-07-16}');
+INSERT INTO longtermhire_uploads VALUES (NULL, 'random_string_1', 'random_string_1', 1, 31, 21, 0, '2025-07-16}', '2025-07-16}');
+INSERT INTO longtermhire_uploads VALUES (NULL, 'random_string_2', 'random_string_2', 1, 15, 28, 0, '2025-07-16}', '2025-07-16}');
+INSERT INTO longtermhire_tokens VALUES (NULL, 1, 'random_string_0', 'random_string_0', 0, '{"key": "value"}', 0, '2025-07-16}', '2025-07-16}', '2025-07-16}');
+INSERT INTO longtermhire_tokens VALUES (NULL, 1, 'random_string_1', 'random_string_1', 0, '{"key": "value"}', 0, '2025-07-16}', '2025-07-16}', '2025-07-16}');
+INSERT INTO longtermhire_tokens VALUES (NULL, 1, 'random_string_2', 'random_string_2', 0, '{"key": "value"}', 0, '2025-07-16}', '2025-07-16}', '2025-07-16}');
+INSERT INTO longtermhire_preference VALUES (NULL, 'random_string_0', 'random_string_0', 'random_string_0', 'random_string_0', 59);
+INSERT INTO longtermhire_preference VALUES (NULL, 'random_string_1', 'random_string_1', 'random_string_1', 'random_string_1', 87);
+INSERT INTO longtermhire_preference VALUES (NULL, 'random_string_2', 'random_string_2', 'random_string_2', 'random_string_2', 36);
+INSERT INTO longtermhire_user VALUES (NULL, '0uusnapfhd2@gmail.com', '$2a$10$i1VnceCgoX5FpcYkxyhQ4uklvr4J4HsiSZI.2obyEgVKIqbMRCcl.', 0, 'random_string_0', '{"key": "value"}', 0, 1, 1, 60, 'random_string_0', '2025-07-16}');
+INSERT INTO longtermhire_user VALUES (NULL, '4pi8u81koel@gmail.com', '$2a$10$K6EgzpEALGTxaUU/M2txdem899uEamh1SBy8eEJVFlBPpismbzjSy', 0, 'random_string_1', '{"key": "value"}', 0, 0, 0, 46, 'random_string_1', '2025-07-16}');
+INSERT INTO longtermhire_user VALUES (NULL, 'jcnm8g9g44e@gmail.com', '$2a$10$IjCxs286Q5oJzdfsoD5/3OtoMAxSLeUzsSIVgJfWVa.yoJffbwJuK', 0, 'random_string_2', '{"key": "value"}', 0, 1, 0, 34, 'random_string_2', '2025-07-16}');

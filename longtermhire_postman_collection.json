@@ -1,0 +1,2487 @@
+{
+  "info": {
+    "name": "longtermhire API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "API collection for longtermhire project",
+    "_postman_id": "1752664165722"
+  },
+  "item": [
+    {
+      "name": "Lambda Endpoints",
+      "description": "API endpoints defined in Lambda functions",
+      "item": [
+        {
+          "name": "Apple Code API",
+          "request": {
+            "method": "POST",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/apple/code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "apple",
+                "code"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{error: false, role: 'admin', token: 'jwt token', expire_at: 60, user_id: 1}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "POST",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": {
+                    "key": "state",
+                    "value": "projectId~secret"
+                  },
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "POST",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "Apple Login API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/apple/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "apple",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "['Will redirect to apple login with auth link']"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "Google Code API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/google/code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "google",
+                "code"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{error: false, role: 'admin', token: 'jwt token', expire_at: 60, user_id: 1}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "Google Login API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/google/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "google",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "['Will redirect to google login with auth link']"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "microsoft Code API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/microsoft/code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "microsoft",
+                "code"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{error: false, role: 'admin', token: 'jwt token', expire_at: 60, user_id: 1}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "microsoft Login API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/microsoft/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "microsoft",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "['Will redirect to microsoft login with auth link']"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "User Profile API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/api/longtermhire/member/lambda/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "api",
+                "longtermhire",
+                "member",
+                "lambda",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/api/longtermhire/member/lambda/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "api",
+                    "longtermhire",
+                    "member",
+                    "lambda",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\":false, \"user\": {\"id\": 1, \"email\": \"user@example.com\", \"name\": \"Test User\", \"created_at\": \"2023-01-01T00:00:00.000Z\"}}"
+            },
+            {
+              "name": "Error Response - 401",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/api/longtermhire/member/lambda/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "api",
+                    "longtermhire",
+                    "member",
+                    "lambda",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\":true,\"message\":\"Authentication required\"}"
+            }
+          ]
+        },
+        {
+          "name": "Update User Profile API",
+          "request": {
+            "method": "PUT",
+            "description": "Lambda API from undefined",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/api/longtermhire/member/lambda/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "api",
+                "longtermhire",
+                "member",
+                "lambda",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"Updated Name\", \"profile_image\": \"https://example.com/image.jpg\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "PUT",
+                "description": "Lambda API from undefined",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/api/longtermhire/member/lambda/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "api",
+                    "longtermhire",
+                    "member",
+                    "lambda",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"name\": \"Updated Name\", \"profile_image\": \"https://example.com/image.jpg\" }",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\":false, \"message\": \"Profile updated successfully\", \"user\": {\"id\": 1, \"email\": \"user@example.com\", \"name\": \"Updated Name\", \"profile_image\": \"https://example.com/image.jpg\"}}"
+            },
+            {
+              "name": "Error Response - 401",
+              "originalRequest": {
+                "method": "PUT",
+                "description": "Lambda API from undefined",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/api/longtermhire/member/lambda/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "api",
+                    "longtermhire",
+                    "member",
+                    "lambda",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"name\": \"Updated Name\" }",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\":true,\"message\":\"Authentication required\"}"
+            },
+            {
+              "name": "Error Response - 400",
+              "originalRequest": {
+                "method": "PUT",
+                "description": "Lambda API from undefined",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/api/longtermhire/member/lambda/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "api",
+                    "longtermhire",
+                    "member",
+                    "lambda",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\":true,\"message\":\"No profile data provided\"}"
+            }
+          ]
+        },
+        {
+          "name": "Apple Code API",
+          "request": {
+            "method": "POST",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/apple/code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "apple",
+                "code"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{error: false, role: 'admin', token: 'jwt token', expire_at: 60, user_id: 1}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "POST",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": {
+                    "key": "state",
+                    "value": "projectId~secret"
+                  },
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "POST",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "Apple Login API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/apple/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "apple",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "['Will redirect to apple login with auth link']"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/apple/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "apple",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "Google Code API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/google/code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "google",
+                "code"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{error: false, role: 'admin', token: 'jwt token', expire_at: 60, user_id: 1}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "Google Login API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/google/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "google",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "['Will redirect to google login with auth link']"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/google/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "google",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "microsoft Code API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/microsoft/code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "microsoft",
+                "code"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{error: false, role: 'admin', token: 'jwt token', expire_at: 60, user_id: 1}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "code"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "microsoft Login API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/api/lambda/microsoft/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "api",
+                "lambda",
+                "microsoft",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "['Will redirect to microsoft login with auth link']"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"access token\", \"message\": \"Something went wrong\"}"
+            },
+            {
+              "name": "Error Response - 403",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v2/api/lambda/microsoft/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v2",
+                    "api",
+                    "lambda",
+                    "microsoft",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\": true, \"failure\": \"me\", \"message\": \"Something went wrong\"}"
+            }
+          ]
+        },
+        {
+          "name": "User Profile API",
+          "request": {
+            "method": "GET",
+            "description": "Lambda API from undefined",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/api/longtermhire/super_admin/lambda/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "api",
+                "longtermhire",
+                "super_admin",
+                "lambda",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/api/longtermhire/super_admin/lambda/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "api",
+                    "longtermhire",
+                    "super_admin",
+                    "lambda",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\":false, \"user\": {\"id\": 1, \"email\": \"user@example.com\", \"name\": \"Test User\", \"created_at\": \"2023-01-01T00:00:00.000Z\"}}"
+            },
+            {
+              "name": "Error Response - 401",
+              "originalRequest": {
+                "method": "GET",
+                "description": "Lambda API from undefined",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/api/longtermhire/super_admin/lambda/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "api",
+                    "longtermhire",
+                    "super_admin",
+                    "lambda",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\":true,\"message\":\"Authentication required\"}"
+            }
+          ]
+        },
+        {
+          "name": "Update User Profile API",
+          "request": {
+            "method": "PUT",
+            "description": "Lambda API from undefined",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/api/longtermhire/super_admin/lambda/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "api",
+                "longtermhire",
+                "super_admin",
+                "lambda",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"Updated Name\", \"profile_image\": \"https://example.com/image.jpg\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "PUT",
+                "description": "Lambda API from undefined",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/api/longtermhire/super_admin/lambda/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "api",
+                    "longtermhire",
+                    "super_admin",
+                    "lambda",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"name\": \"Updated Name\", \"profile_image\": \"https://example.com/image.jpg\" }",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\":false, \"message\": \"Profile updated successfully\", \"user\": {\"id\": 1, \"email\": \"user@example.com\", \"name\": \"Updated Name\", \"profile_image\": \"https://example.com/image.jpg\"}}"
+            },
+            {
+              "name": "Error Response - 401",
+              "originalRequest": {
+                "method": "PUT",
+                "description": "Lambda API from undefined",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/api/longtermhire/super_admin/lambda/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "api",
+                    "longtermhire",
+                    "super_admin",
+                    "lambda",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"name\": \"Updated Name\" }",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\":true,\"message\":\"Authentication required\"}"
+            },
+            {
+              "name": "Error Response - 400",
+              "originalRequest": {
+                "method": "PUT",
+                "description": "Lambda API from undefined",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/api/longtermhire/super_admin/lambda/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "api",
+                    "longtermhire",
+                    "super_admin",
+                    "lambda",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Error",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"error\":true,\"message\":\"No profile data provided\"}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [],
+  "variable": [
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string",
+      "description": "Authentication token for requests"
+    },
+    {
+      "key": "baseUrl",
+      "value": "https://baas.mytechpassport.com",
+      "type": "string",
+      "description": "Base URL for API requests"
+    }
+  ]
+}
