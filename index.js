@@ -25,6 +25,29 @@ module.exports = function (app) {
       }
       return;
     }
+    if (file === "routes") {
+      const routesPath = path.join(__dirname, "routes");
+      if (fs.existsSync(routesPath)) {
+        // Read files in routes directory
+        fs.readdirSync(routesPath).forEach(function (file) {
+          // Skip non-JavaScript files and index.js
+          if (file === "index.js" || path.extname(file) !== ".js") {
+            return;
+          }
+
+          // Skip .DS_Store or other system files
+          if (file === ".DS_Store") {
+            return;
+          }
+
+          // Require the route file
+          const name = path.basename(file, ".js");
+          console.log("loading route file: " + name);
+          require(path.join(routesPath, name))(app);
+        });
+      }
+      return;
+    }
     if (file === "index.js" || file === ".DS_Store") return;
     // ignore .sql, .json
     if (

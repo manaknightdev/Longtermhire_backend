@@ -1,17 +1,17 @@
-
-const BaseRole = require('../../../baas/core/BaseRole');
+const BaseRole = require("../../../baas/core/BaseRole");
 
 class super_admin extends BaseRole {
-  static id = 'role_admin_1752663808666';
-  static name = 'Super Admin';
-  static slug = 'super_admin';
+  static id = "role_admin_1752663808666";
+  static name = "Super Admin";
+  static slug = "super_admin";
   static permissions = {
-    "routes": [],
-    "canCreateUsers": true,
-    "canEditUsers": true,
-    "canDeleteUsers": true,
-    "canManageRoles": true,
-    "canUpdateOtherUsers": true
+    routes: [],
+    canCreateUsers: true,
+    canEditUsers: true,
+    canDeleteUsers: true,
+    canManageRoles: true,
+    canUpdateOtherUsers: true,
+    canUpload: true,
   };
   static index = 0;
 
@@ -24,29 +24,31 @@ class super_admin extends BaseRole {
   static allowedModels = [];
 
   /**
-  * Check if role can access a specific model
-  * @param {string} modelName - Name of the model to check
-  * @returns {boolean} Whether model access is allowed
-  */
+   * Check if role can access a specific model
+   * @param {string} modelName - Name of the model to check
+   * @returns {boolean} Whether model access is allowed
+   */
   static canAccessModel(modelName) {
     return this.permissions?.treeql?.models?.[modelName]?.allowed || false;
   }
 
   /**
-  * Get blacklisted fields for a model
-  * @param {string} modelName - Name of the model
-  * @returns {string[]} Array of blacklisted field names
-  */
+   * Get blacklisted fields for a model
+   * @param {string} modelName - Name of the model
+   * @returns {string[]} Array of blacklisted field names
+   */
   static getBlacklistedFields(modelName) {
-    return this.permissions?.treeql?.models?.[modelName]?.blacklistedFields || [];
+    return (
+      this.permissions?.treeql?.models?.[modelName]?.blacklistedFields || []
+    );
   }
 
   /**
-  * Check if role can perform an operation on a model
-  * @param {string} modelName - Name of the model
-  * @param {string} operation - Operation to check (get, getOne, getAll, post, put, delete, paginate, join)
-  * @returns {boolean} Whether operation is allowed
-  */
+   * Check if role can perform an operation on a model
+   * @param {string} modelName - Name of the model
+   * @param {string} operation - Operation to check (get, getOne, getAll, post, put, delete, paginate, join)
+   * @returns {boolean} Whether operation is allowed
+   */
   static canPerformOperation(modelName, operation) {
     const modelConfig = this.permissions?.treeql?.models?.[modelName];
     if (!modelConfig?.allowed) {
@@ -56,18 +58,18 @@ class super_admin extends BaseRole {
   }
 
   /**
-  * Get all allowed operations for a model
-  * @param {string} modelName - Name of the model
-  * @returns {Object<string, boolean>} Object mapping operations to permission status
-  */
+   * Get all allowed operations for a model
+   * @param {string} modelName - Name of the model
+   * @returns {Object<string, boolean>} Object mapping operations to permission status
+   */
   static getAllowedOperations(modelName) {
     return this.permissions?.treeql?.models?.[modelName]?.operations || {};
   }
 
   /**
-  * Check if TreeQL is enabled for this role
-  * @returns {boolean} Whether TreeQL is enabled
-  */
+   * Check if TreeQL is enabled for this role
+   * @returns {boolean} Whether TreeQL is enabled
+   */
   static isTreeQLEnabled() {
     return this.permissions?.treeql?.enabled || false;
   }
