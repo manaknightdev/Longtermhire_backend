@@ -51,22 +51,28 @@ module.exports = function (app) {
 
         // Process equipment data to determine discount information
         const processedEquipment = equipment.map((item) => {
-          // Determine discount type and value (prioritize equipment-specific custom discount over package discount)
+          // Determine discount type and value with proper priority:
+          // 1. Equipment-specific custom discount (highest priority)
+          // 2. Pricing package discount (fallback)
+          // 3. No discount (base price)
           let discount_type = null;
           let discount_value = 0;
+          let discount_source = null;
 
           if (item.custom_discount_type && item.custom_discount_value) {
-            // Use equipment-specific custom discount
+            // Use equipment-specific custom discount (highest priority)
             discount_type = item.custom_discount_type;
             discount_value = parseFloat(item.custom_discount_value);
+            discount_source = "equipment_specific";
           } else if (
             item.package_discount_type !== null &&
             item.package_discount_value
           ) {
-            // Use pricing package discount
+            // Use pricing package discount (fallback)
             discount_type =
               item.package_discount_type === 0 ? "percentage" : "fixed";
             discount_value = parseFloat(item.package_discount_value);
+            discount_source = "pricing_package";
           }
 
           return {
@@ -80,6 +86,7 @@ module.exports = function (app) {
             ),
             discount_type: discount_type,
             discount_value: discount_value,
+            discount_source: discount_source,
             minimum_duration: item.minimum_duration,
             availability: item.availability,
             content: {
@@ -182,22 +189,28 @@ module.exports = function (app) {
 
         const item = equipment[0];
 
-        // Determine discount type and value (prioritize equipment-specific custom discount over package discount)
+        // Determine discount type and value with proper priority:
+        // 1. Equipment-specific custom discount (highest priority)
+        // 2. Pricing package discount (fallback)
+        // 3. No discount (base price)
         let discount_type = null;
         let discount_value = 0;
+        let discount_source = null;
 
         if (item.custom_discount_type && item.custom_discount_value) {
-          // Use equipment-specific custom discount
+          // Use equipment-specific custom discount (highest priority)
           discount_type = item.custom_discount_type;
           discount_value = parseFloat(item.custom_discount_value);
+          discount_source = "equipment_specific";
         } else if (
           item.package_discount_type !== null &&
           item.package_discount_value
         ) {
-          // Use pricing package discount
+          // Use pricing package discount (fallback)
           discount_type =
             item.package_discount_type === 0 ? "percentage" : "fixed";
           discount_value = parseFloat(item.package_discount_value);
+          discount_source = "pricing_package";
         }
 
         return res.status(200).json({
@@ -213,6 +226,7 @@ module.exports = function (app) {
             ),
             discount_type: discount_type,
             discount_value: discount_value,
+            discount_source: discount_source,
             minimum_duration: item.minimum_duration,
             availability: item.availability,
             content: {
