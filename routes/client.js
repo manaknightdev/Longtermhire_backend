@@ -151,13 +151,13 @@ module.exports = function (app) {
           try {
             for (const equipmentId of equipment) {
               const equipmentAssignSQL = `
-                INSERT INTO longtermhire_client_equipment (client_user_id, equipment_id, created_at, updated_at)
+                INSERT INTO longtermhire_client_equipment (client_user_id, equipment_id, assigned_by, created_at)
                 VALUES (?, ?, ?, ?)
               `;
               await sdk.rawQuery(equipmentAssignSQL, [
                 userId,
                 equipmentId,
-                currentTime,
+                req.user_id, // Use the current admin user ID
                 currentTime,
               ]);
             }
@@ -376,9 +376,7 @@ module.exports = function (app) {
           c.updated_at,
           u.email,
           cp.pricing_package_id,
-          pp.name as pricing_package_name,
-          cp.custom_discount_type,
-          cp.custom_discount_value
+          pp.name as pricing_package_name
         FROM longtermhire_client c
         LEFT JOIN longtermhire_user u ON c.user_id = u.id
         LEFT JOIN longtermhire_client_pricing cp ON c.user_id = cp.client_user_id

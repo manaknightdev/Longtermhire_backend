@@ -88,6 +88,243 @@ module.exports = function (app) {
     }
   );
 
+  // Assign custom discount to specific equipment for a client
+  app.post(
+    "/v1/api/longtermhire/super_admin/assign-equipment-discount",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        console.log("🔧 Assign equipment discount request body:", req.body);
+
+        const sdk = app.get("sdk");
+        sdk.setProjectId(req.projectId);
+
+        const { client_user_id, equipment_id, discount_type, discount_value } =
+          req.body;
+
+        if (
+          !client_user_id ||
+          !equipment_id ||
+          !discount_type ||
+          !discount_value
+        ) {
+          return res.status(400).json({
+            error: true,
+            message:
+              "Client user ID, equipment ID, discount type, and discount value are required",
+          });
+        }
+
+        // Validate discount type
+        if (!["percentage", "fixed"].includes(discount_type)) {
+          return res.status(400).json({
+            error: true,
+            message: "Discount type must be 'percentage' or 'fixed'",
+          });
+        }
+
+        // Validate discount value
+        const discountValue = parseFloat(discount_value);
+        if (isNaN(discountValue) || discountValue <= 0) {
+          return res.status(400).json({
+            error: true,
+            message: "Discount value must be a positive number",
+          });
+        }
+
+        if (discount_type === "percentage" && discountValue > 100) {
+          return res.status(400).json({
+            error: true,
+            message: "Percentage discount cannot exceed 100%",
+          });
+        }
+
+        // Check if equipment is assigned to this client
+        console.log("🔍 Looking for equipment assignment:", {
+          client_user_id,
+          equipment_id,
+          client_user_id_type: typeof client_user_id,
+          equipment_id_type: typeof equipment_id,
+        });
+
+        sdk.setTable("client_equipment");
+
+        // Ensure values are properly converted to numbers
+        const searchClientId = parseInt(client_user_id);
+        const searchEquipmentId = parseInt(equipment_id);
+
+        if (isNaN(searchClientId) || isNaN(searchEquipmentId)) {
+          return res.status(400).json({
+            error: true,
+            message: "Invalid client user ID or equipment ID format",
+          });
+        }
+
+        // Use raw SQL query instead of findOne to avoid the object conversion issue
+        const findAssignmentSQL = `
+          SELECT id FROM longtermhire_client_equipment 
+          WHERE client_user_id = ? AND equipment_id = ?
+        `;
+
+        const existingAssignment = await sdk.rawQuery(findAssignmentSQL, [
+          searchClientId,
+          searchEquipmentId,
+        ]);
+
+        console.log(
+          "🔍 Equipment assignment search result:",
+          existingAssignment
+        );
+
+        if (!existingAssignment || existingAssignment.length === 0) {
+          return res.status(400).json({
+            error: true,
+            message: "Equipment is not assigned to this client",
+          });
+        }
+
+        const assignmentId = existingAssignment[0].id;
+
+        // Update the assignment with custom discount using raw SQL
+        const updateSQL = `
+          UPDATE longtermhire_client_equipment 
+          SET custom_discount_type = ?, custom_discount_value = ?
+          WHERE id = ?
+        `;
+
+        await sdk.rawQuery(updateSQL, [
+          discount_type,
+          discountValue,
+          assignmentId,
+        ]);
+
+        return res.status(200).json({
+          error: false,
+          message: "Custom discount assigned to equipment successfully",
+        });
+      } catch (error) {
+        console.error("Assign equipment discount error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message,
+        });
+      }
+    }
+  );
+
+  // Get all equipment-specific custom discounts for a client
+  app.get(
+    "/v1/api/longtermhire/super_admin/client-equipment-discounts/:client_user_id",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const sdk = app.get("sdk");
+        sdk.setProjectId(req.projectId);
+
+        const { client_user_id } = req.params;
+
+        if (!client_user_id) {
+          return res.status(400).json({
+            error: true,
+            message: "Client user ID is required",
+          });
+        }
+
+        // Get all equipment assignments with custom discounts for this client
+        const getDiscountsSQL = `
+          SELECT 
+            ce.id as assignment_id,
+            ce.client_user_id,
+            ce.equipment_id,
+            ce.custom_discount_type,
+            ce.custom_discount_value,
+            ce.assigned_by,
+            ce.created_at,
+            e.equipment_name,
+            e.category_name,
+            e.base_price,
+            e.minimum_duration,
+            u.email as assigned_by_email
+          FROM longtermhire_client_equipment ce
+          JOIN longtermhire_equipment_item e ON ce.equipment_id = e.id
+          LEFT JOIN longtermhire_user u ON ce.assigned_by = u.id
+          WHERE ce.client_user_id = ? 
+          AND (ce.custom_discount_type IS NOT NULL OR ce.custom_discount_value IS NOT NULL)
+          ORDER BY e.category_name, e.equipment_name
+        `;
+
+        const discounts = await sdk.rawQuery(getDiscountsSQL, [client_user_id]);
+
+        return res.status(200).json({
+          error: false,
+          data: discounts || [],
+          message: "Equipment-specific custom discounts retrieved successfully",
+        });
+      } catch (error) {
+        console.error("Get client equipment discounts error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message,
+        });
+      }
+    }
+  );
+
+  // Remove custom discount from equipment
+  app.delete(
+    "/v1/api/longtermhire/super_admin/remove-equipment-discount",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const sdk = app.get("sdk");
+        sdk.setProjectId(req.projectId);
+
+        const { client_user_id, equipment_id } = req.body;
+
+        if (!client_user_id || !equipment_id) {
+          return res.status(400).json({
+            error: true,
+            message: "Client user ID and equipment ID are required",
+          });
+        }
+
+        // Check if equipment is assigned to this client
+        sdk.setTable("client_equipment");
+        const existingAssignment = await sdk.findOne({
+          client_user_id: client_user_id,
+          equipment_id: equipment_id,
+        });
+
+        if (!existingAssignment) {
+          return res.status(400).json({
+            error: true,
+            message: "Equipment is not assigned to this client",
+          });
+        }
+
+        // Remove custom discount
+        await sdk.update(existingAssignment.id, {
+          custom_discount_type: null,
+          custom_discount_value: null,
+        });
+
+        return res.status(200).json({
+          error: false,
+          message: "Custom discount removed from equipment successfully",
+        });
+      } catch (error) {
+        console.error("Remove equipment discount error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message,
+        });
+      }
+    }
+  );
+
   // Assign pricing package to client
   app.post(
     "/v1/api/longtermhire/super_admin/assign-pricing",
