@@ -7,6 +7,10 @@ class ChatService {
     this.isConnected = false;
     this.messageHandlers = new Map();
 
+    // Fallback in-memory storage for online users
+    this.onlineUsers = new Map();
+    this.heartbeats = new Map();
+
     // Start cleanup interval for stale online statuses
     this.startCleanupInterval();
   }
@@ -189,43 +193,81 @@ class ChatService {
     this.messageHandlers.delete(userId);
   }
 
-  // Get online users (stored in Redis)
+  // Get online users (stored in Redis or fallback to memory)
   async getOnlineUsers() {
-    if (!this.isConnected) return [];
+    if (!this.isConnected) {
+      // Fallback to in-memory storage
+      const onlineUsers = Array.from(this.onlineUsers.keys());
+      console.log(
+        `📊 Found ${onlineUsers.length} online users (memory):`,
+        onlineUsers
+      );
+      return onlineUsers;
+    }
 
     try {
       const keys = await this.publisher.keys("online:user:*");
-      return keys.map((key) => key.replace("online:user:", ""));
+      const onlineUsers = keys.map((key) => key.replace("online:user:", ""));
+      console.log(
+        `📊 Found ${onlineUsers.length} online users (Redis):`,
+        onlineUsers
+      );
+      return onlineUsers;
     } catch (error) {
-      console.error("Error getting online users:", error);
-      return [];
+      console.error(
+        "Error getting online users from Redis, using memory fallback:",
+        error
+      );
+      const onlineUsers = Array.from(this.onlineUsers.keys());
+      return onlineUsers;
     }
   }
 
   // Set user as online with heartbeat tracking
   async setUserOnline(userId) {
-    if (!this.isConnected) return;
+    const now = Date.now();
+
+    // Always store in memory as fallback
+    this.onlineUsers.set(userId, "true");
+    this.heartbeats.set(userId, now);
+    console.log(`🟢 User ${userId} marked as online (memory)`);
+
+    if (!this.isConnected) {
+      console.log(
+        `⚠️ ChatService not connected, using memory fallback for user ${userId}`
+      );
+      return;
+    }
 
     try {
-      const now = Date.now();
       await this.publisher.setEx(`online:user:${userId}`, 300, "true"); // 5 minutes TTL
       await this.publisher.setEx(`heartbeat:${userId}`, 300, now.toString()); // Track heartbeat
-      console.log(`🟢 User ${userId} marked as online`);
+      console.log(`🟢 User ${userId} marked as online (Redis)`);
     } catch (error) {
-      console.error("Error setting user online:", error);
+      console.error("Error setting user online in Redis:", error);
     }
   }
 
   // Set user as offline
   async setUserOffline(userId) {
-    if (!this.isConnected) return;
+    // Always remove from memory
+    this.onlineUsers.delete(userId);
+    this.heartbeats.delete(userId);
+    console.log(`🔴 User ${userId} marked as offline (memory)`);
+
+    if (!this.isConnected) {
+      console.log(
+        `⚠️ ChatService not connected, using memory fallback for user ${userId}`
+      );
+      return;
+    }
 
     try {
       await this.publisher.del(`online:user:${userId}`);
       await this.publisher.del(`heartbeat:${userId}`);
-      console.log(`🔴 User ${userId} marked as offline`);
+      console.log(`🔴 User ${userId} marked as offline (Redis)`);
     } catch (error) {
-      console.error("Error setting user offline:", error);
+      console.error("Error setting user offline in Redis:", error);
     }
   }
 

@@ -18,6 +18,7 @@ module.exports = function (app) {
     async (req, res) => {
       try {
         const userId = req.user_id;
+        console.log(`🟢 Setting user ${userId} as online...`);
         await chatService.setUserOnline(userId);
 
         return res.status(200).json({
@@ -89,7 +90,10 @@ module.exports = function (app) {
     RoleMiddleware(["super_admin", "member"]),
     async (req, res) => {
       try {
+        console.log("🔍 Checking admin status...");
         const onlineUsers = await chatService.getOnlineUsers();
+        console.log("📊 Online users:", onlineUsers);
+
         const sdk = app.get("sdk");
         sdk.setProjectId("longtermhire");
 
@@ -97,12 +101,24 @@ module.exports = function (app) {
         const adminSQL = `SELECT id FROM longtermhire_user WHERE role_id = 'super_admin'`;
         const admins = await sdk.rawQuery(adminSQL);
         const adminIds = admins.map((admin) => admin.id.toString());
+        console.log("👥 Admin IDs:", adminIds);
 
-        // Check if any admin is online
+        // Check if any admin is online (convert both to strings for comparison)
+        console.log("🔍 Comparing online users with admin IDs:");
+        onlineUsers.forEach((userId) => {
+          const userIdStr = userId.toString();
+          const isAdmin = adminIds.includes(userIdStr);
+          console.log(
+            `  User ${userId} (${typeof userId}) -> "${userIdStr}" in adminIds: ${isAdmin}`
+          );
+        });
+
         const onlineAdmins = onlineUsers.filter((userId) =>
-          adminIds.includes(userId)
+          adminIds.includes(userId.toString())
         );
         const hasOnlineAdmin = onlineAdmins.length > 0;
+        console.log("🟢 Online admins:", onlineAdmins);
+        console.log("✅ Has online admin:", hasOnlineAdmin);
 
         return res.status(200).json({
           error: false,
@@ -350,17 +366,29 @@ module.exports = function (app) {
         let autoResponseMessageId = null;
 
         if (isClient) {
+          console.log(
+            `👤 Client ${fromUserId} sending message, checking admin status...`
+          );
           // Check if any admin is online
           const onlineUsers = await chatService.getOnlineUsers();
           const adminSQL = `SELECT id FROM longtermhire_user WHERE role_id = 'super_admin'`;
           const admins = await sdk.rawQuery(adminSQL);
           const adminIds = admins.map((admin) => admin.id.toString());
           const onlineAdmins = onlineUsers.filter((userId) =>
-            adminIds.includes(userId)
+            adminIds.includes(userId.toString())
+          );
+
+          console.log(
+            `📊 Client auto-response check: onlineUsers=${onlineUsers}, adminIds=${adminIds}, onlineAdmins=${onlineAdmins}`
           );
 
           if (onlineAdmins.length === 0) {
             shouldSendAutoResponse = true;
+            console.log(
+              `🚨 No admin online, will send auto-response to client ${fromUserId}`
+            );
+          } else {
+            console.log(`✅ Admin online, no auto-response needed`);
           }
         }
 
@@ -414,21 +442,29 @@ module.exports = function (app) {
 
         // Send auto-response if no admin is online
         if (shouldSendAutoResponse) {
+          console.log(
+            `🔄 Attempting to send auto-response to client ${fromUserId}...`
+          );
           try {
             // Get any admin user ID for auto-response
             const adminSQL = `SELECT id FROM longtermhire_user WHERE role_id = 'super_admin' LIMIT 1`;
             const adminResult = await sdk.rawQuery(adminSQL);
+            console.log(`👥 Found admin for auto-response:`, adminResult);
 
             if (adminResult && adminResult.length > 0) {
               const adminId = adminResult[0].id;
               const autoResponseText =
                 "Thank you for your message. Our team is currently offline, but we'll respond within 24 hours during business hours.";
 
+              console.log(
+                `📝 Inserting auto-response message from admin ${adminId} to client ${fromUserId}...`
+              );
+
               // Insert auto-response message
               const autoResponseSQL = `
                 INSERT INTO longtermhire_chat_messages 
                 (from_user_id, to_user_id, message, message_type, created_at)
-                VALUES (?, ?, ?, 'auto_response', NOW())
+                VALUES (?, ?, ?, 'text', NOW())
               `;
 
               const autoResponseResult = await sdk.rawQuery(autoResponseSQL, [
@@ -438,6 +474,9 @@ module.exports = function (app) {
               ]);
 
               autoResponseMessageId = autoResponseResult.insertId;
+              console.log(
+                `✅ Auto-response message inserted with ID: ${autoResponseMessageId}`
+              );
 
               // Update conversation with auto-response
               await sdk.rawQuery(upsertConversationSQL, [
@@ -453,18 +492,21 @@ module.exports = function (app) {
               await chatService.sendMessage(adminId, fromUserId, {
                 id: autoResponseMessageId,
                 message: autoResponseText,
-                message_type: "auto_response",
+                message_type: "text",
               });
 
               console.log(
-                `✅ Auto-response sent to client ${fromUserId} - no admin online`
+                `✅ Auto-response sent to client ${fromUserId} - no admin online (Message ID: ${autoResponseMessageId})`
               );
+            } else {
+              console.error(`❌ No admin found for auto-response`);
             }
           } catch (autoResponseError) {
             console.error(
               "⚠️ Failed to send auto-response:",
               autoResponseError
             );
+            autoResponseMessageId = null; // Ensure it's null on error
           }
         }
 

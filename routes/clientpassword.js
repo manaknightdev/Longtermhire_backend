@@ -29,20 +29,18 @@ module.exports = function (app) {
       });
 
       if (!user) {
-        // Don't reveal if email exists or not for security
-        return res.status(200).json({
-          error: false,
-          message:
-            "If this email is registered, you will receive reset instructions.",
+        // Return error for non-existent email
+        return res.status(404).json({
+          error: true,
+          message: "No account found with this email address.",
         });
       }
 
       // Check if user has member role (clients use member role)
       if (user.role_id !== "member") {
-        return res.status(200).json({
-          error: false,
-          message:
-            "If this email is registered, you will receive reset instructions.",
+        return res.status(403).json({
+          error: true,
+          message: "This email is not associated with a client account.",
         });
       }
 
