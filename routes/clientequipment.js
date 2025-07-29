@@ -28,6 +28,7 @@ module.exports = function (app) {
             pp.discount_value as package_discount_value,
             cp.custom_discount_type,
             cp.custom_discount_value,
+            e.minimum_duration,
             CASE
               WHEN cp.custom_discount_type = 'percentage' THEN e.base_price - (e.base_price * cp.custom_discount_value / 100)
               WHEN cp.custom_discount_type = 'fixed' THEN e.base_price - cp.custom_discount_value
@@ -79,6 +80,7 @@ module.exports = function (app) {
             ),
             discount_type: discount_type,
             discount_value: discount_value,
+            minimum_duration: item.minimum_duration,
             availability: item.availability,
             content: {
               description: item.content_description,
@@ -153,6 +155,7 @@ module.exports = function (app) {
             pp.discount_value as package_discount_value,
             cp.custom_discount_type,
             cp.custom_discount_value,
+            e.minimum_duration,
             CASE 
               WHEN cp.custom_discount_type = 'percentage' THEN e.base_price - (e.base_price * cp.custom_discount_value / 100)
               WHEN cp.custom_discount_type = 'fixed' THEN e.base_price - cp.custom_discount_value
@@ -210,6 +213,7 @@ module.exports = function (app) {
             ),
             discount_type: discount_type,
             discount_value: discount_value,
+            minimum_duration: item.minimum_duration,
             availability: item.availability,
             content: {
               description: item.content_description,

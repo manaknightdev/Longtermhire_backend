@@ -5,6 +5,11 @@ const chatService = require("../services/ChatService");
 module.exports = function (app) {
   console.log("Loading chat routes...");
 
+  // Initialize ChatService
+  chatService.initialize().catch((error) => {
+    console.error("Failed to initialize ChatService:", error);
+  });
+
   // Set user as online
   app.post(
     "/v1/api/longtermhire/chat/online",
