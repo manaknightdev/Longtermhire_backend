@@ -24,23 +24,23 @@ module.exports = function (app) {
             c.image_url as content_image,
             pp.name as package_name,
             pp.description as package_description,
-            pp.discount_type,
-            pp.discount_value,
+            pp.discount_type as package_discount_type,
+            pp.discount_value as package_discount_value,
+            cl.custom_discount_type,
+            cl.custom_discount_value,
             CASE
+              WHEN cl.custom_discount_type = 'percentage' THEN e.base_price - (e.base_price * cl.custom_discount_value / 100)
+              WHEN cl.custom_discount_type = 'fixed' THEN e.base_price - cl.custom_discount_value
               WHEN pp.discount_type = 0 THEN e.base_price - (e.base_price * pp.discount_value / 100)
               WHEN pp.discount_type = 1 THEN e.base_price - pp.discount_value
               ELSE e.base_price
-            END as discounted_price,
-            CASE
-              WHEN pp.discount_type = 0 THEN pp.discount_value
-              WHEN pp.discount_type = 1 THEN ROUND((pp.discount_value / e.base_price) * 100, 2)
-              ELSE 0
-            END as discount_percentage
+            END as discounted_price
           FROM longtermhire_client_equipment ce
           JOIN longtermhire_equipment_item e ON ce.equipment_id = e.id
           LEFT JOIN longtermhire_content c ON e.id = c.equipment_id
           LEFT JOIN longtermhire_client_pricing cp ON cp.client_user_id = ce.client_user_id
           LEFT JOIN longtermhire_pricing_package pp ON cp.pricing_package_id = pp.id
+          LEFT JOIN longtermhire_client cl ON cl.user_id = ce.client_user_id
           WHERE ce.client_user_id = ? AND e.availability = 1
           ORDER BY e.category_name, e.equipment_name
         `,
@@ -49,13 +49,27 @@ module.exports = function (app) {
 
         console.log(`✅ Found ${equipment.length} equipment items for client`);
 
-        // Group equipment by category for better organization
-        const groupedEquipment = equipment.reduce((acc, item) => {
-          const category = item.category_name || "Uncategorized";
-          if (!acc[category]) {
-            acc[category] = [];
+        // Process equipment data to determine discount information
+        const processedEquipment = equipment.map((item) => {
+          // Determine discount type and value (prioritize custom discount over package discount)
+          let discount_type = null;
+          let discount_value = 0;
+
+          if (item.custom_discount_type && item.custom_discount_value) {
+            // Use custom discount
+            discount_type = item.custom_discount_type;
+            discount_value = parseFloat(item.custom_discount_value);
+          } else if (
+            item.package_discount_type !== null &&
+            item.package_discount_value
+          ) {
+            // Use pricing package discount
+            discount_type =
+              item.package_discount_type === 0 ? "percentage" : "fixed";
+            discount_value = parseFloat(item.package_discount_value);
           }
-          acc[category].push({
+
+          return {
             id: item.id,
             equipment_id: item.equipment_id,
             equipment_name: item.equipment_name,
@@ -64,7 +78,8 @@ module.exports = function (app) {
             discounted_price: parseFloat(
               item.discounted_price || item.base_price
             ),
-            discount_percentage: parseFloat(item.discount_percentage || 0),
+            discount_type: discount_type,
+            discount_value: discount_value,
             availability: item.availability,
             content: {
               description: item.content_description,
@@ -74,41 +89,26 @@ module.exports = function (app) {
             pricing_package: {
               name: item.package_name,
               description: item.package_description,
-              discount_type: item.discount_type,
-              discount_value: parseFloat(item.discount_value || 0),
             },
-          });
+          };
+        });
+
+        // Group equipment by category for better organization
+        const groupedEquipment = processedEquipment.reduce((acc, item) => {
+          const category = item.category_name || "Uncategorized";
+          if (!acc[category]) {
+            acc[category] = [];
+          }
+          acc[category].push(item);
           return acc;
         }, {});
 
         return res.status(200).json({
           error: false,
           data: {
-            equipment: equipment.map((item) => ({
-              id: item.id,
-              equipment_id: item.equipment_id,
-              equipment_name: item.equipment_name,
-              category_name: item.category_name,
-              base_price: parseFloat(item.base_price),
-              discounted_price: parseFloat(
-                item.discounted_price || item.base_price
-              ),
-              discount_percentage: parseFloat(item.discount_percentage || 0),
-              availability: item.availability,
-              content: {
-                description: item.content_description,
-                banner_description: item.banner_description,
-                image: item.content_image,
-              },
-              pricing_package: {
-                name: item.package_name,
-                description: item.package_description,
-                discount_type: item.discount_type,
-                discount_value: parseFloat(item.discount_value || 0),
-              },
-            })),
+            equipment: processedEquipment,
             grouped_equipment: groupedEquipment,
-            total_count: equipment.length,
+            total_count: processedEquipment.length,
           },
           message: "Equipment retrieved successfully",
         });
@@ -150,23 +150,23 @@ module.exports = function (app) {
             c.image_url as content_image,
             pp.name as package_name,
             pp.description as package_description,
-            pp.discount_type,
-            pp.discount_value,
+            pp.discount_type as package_discount_type,
+            pp.discount_value as package_discount_value,
+            cl.custom_discount_type,
+            cl.custom_discount_value,
             CASE 
+              WHEN cl.custom_discount_type = 'percentage' THEN e.base_price - (e.base_price * cl.custom_discount_value / 100)
+              WHEN cl.custom_discount_type = 'fixed' THEN e.base_price - cl.custom_discount_value
               WHEN pp.discount_type = 0 THEN e.base_price - (e.base_price * pp.discount_value / 100)
               WHEN pp.discount_type = 1 THEN e.base_price - pp.discount_value
               ELSE e.base_price
-            END as discounted_price,
-            CASE 
-              WHEN pp.discount_type = 0 THEN pp.discount_value
-              WHEN pp.discount_type = 1 THEN ROUND((pp.discount_value / e.base_price) * 100, 2)
-              ELSE 0
-            END as discount_percentage
+            END as discounted_price
           FROM longtermhire_client_equipment ce
           JOIN longtermhire_equipment_item e ON ce.equipment_id = e.id
           LEFT JOIN longtermhire_content c ON e.equipment_id = c.equipment_id
           LEFT JOIN longtermhire_client_pricing cp ON cp.client_user_id = ce.client_user_id
           LEFT JOIN longtermhire_pricing_package pp ON cp.pricing_package_id = pp.id
+          LEFT JOIN longtermhire_client cl ON cl.user_id = ce.client_user_id
           WHERE ce.client_user_id = ? AND e.id = ?
         `,
           [req.user_id, equipmentId]
@@ -181,6 +181,24 @@ module.exports = function (app) {
 
         const item = equipment[0];
 
+        // Determine discount type and value (prioritize custom discount over package discount)
+        let discount_type = null;
+        let discount_value = 0;
+
+        if (item.custom_discount_type && item.custom_discount_value) {
+          // Use custom discount
+          discount_type = item.custom_discount_type;
+          discount_value = parseFloat(item.custom_discount_value);
+        } else if (
+          item.package_discount_type !== null &&
+          item.package_discount_value
+        ) {
+          // Use pricing package discount
+          discount_type =
+            item.package_discount_type === 0 ? "percentage" : "fixed";
+          discount_value = parseFloat(item.package_discount_value);
+        }
+
         return res.status(200).json({
           error: false,
           data: {
@@ -192,7 +210,8 @@ module.exports = function (app) {
             discounted_price: parseFloat(
               item.discounted_price || item.base_price
             ),
-            discount_percentage: parseFloat(item.discount_percentage || 0),
+            discount_type: discount_type,
+            discount_value: discount_value,
             availability: item.availability,
             content: {
               description: item.content_description,
@@ -202,8 +221,6 @@ module.exports = function (app) {
             pricing_package: {
               name: item.package_name,
               description: item.package_description,
-              discount_type: item.discount_type,
-              discount_value: parseFloat(item.discount_value || 0),
             },
           },
           message: "Equipment details retrieved successfully",
