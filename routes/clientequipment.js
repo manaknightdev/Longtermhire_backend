@@ -26,7 +26,11 @@ module.exports = function (app) {
             pp.description as package_description,
             pp.discount_type as package_discount_type,
             pp.discount_value as package_discount_value,
+            cp.custom_discount_type,
+            cp.custom_discount_value,
             CASE
+              WHEN cp.custom_discount_type = 'percentage' THEN e.base_price - (e.base_price * cp.custom_discount_value / 100)
+              WHEN cp.custom_discount_type = 'fixed' THEN e.base_price - cp.custom_discount_value
               WHEN pp.discount_type = 0 THEN e.base_price - (e.base_price * pp.discount_value / 100)
               WHEN pp.discount_type = 1 THEN e.base_price - pp.discount_value
               ELSE e.base_price
@@ -46,11 +50,15 @@ module.exports = function (app) {
 
         // Process equipment data to determine discount information
         const processedEquipment = equipment.map((item) => {
-          // Determine discount type and value from pricing package
+          // Determine discount type and value (prioritize custom discount over package discount)
           let discount_type = null;
           let discount_value = 0;
 
-          if (
+          if (item.custom_discount_type && item.custom_discount_value) {
+            // Use custom discount
+            discount_type = item.custom_discount_type;
+            discount_value = parseFloat(item.custom_discount_value);
+          } else if (
             item.package_discount_type !== null &&
             item.package_discount_value
           ) {
@@ -143,7 +151,11 @@ module.exports = function (app) {
             pp.description as package_description,
             pp.discount_type as package_discount_type,
             pp.discount_value as package_discount_value,
+            cp.custom_discount_type,
+            cp.custom_discount_value,
             CASE 
+              WHEN cp.custom_discount_type = 'percentage' THEN e.base_price - (e.base_price * cp.custom_discount_value / 100)
+              WHEN cp.custom_discount_type = 'fixed' THEN e.base_price - cp.custom_discount_value
               WHEN pp.discount_type = 0 THEN e.base_price - (e.base_price * pp.discount_value / 100)
               WHEN pp.discount_type = 1 THEN e.base_price - pp.discount_value
               ELSE e.base_price
@@ -167,11 +179,15 @@ module.exports = function (app) {
 
         const item = equipment[0];
 
-        // Determine discount type and value from pricing package
+        // Determine discount type and value (prioritize custom discount over package discount)
         let discount_type = null;
         let discount_value = 0;
 
-        if (
+        if (item.custom_discount_type && item.custom_discount_value) {
+          // Use custom discount
+          discount_type = item.custom_discount_type;
+          discount_value = parseFloat(item.custom_discount_value);
+        } else if (
           item.package_discount_type !== null &&
           item.package_discount_value
         ) {
