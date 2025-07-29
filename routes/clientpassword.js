@@ -267,9 +267,10 @@ module.exports = function (app) {
 
       // Check if user has member role (clients use member role)
       if (user.role_id !== "member") {
+        console.log("❌ User is not a client (role_id:", user.role_id, ")");
         return res.status(400).json({
           error: true,
-          message: "Invalid request",
+          message: "This email is not associated with a client account",
         });
       }
 
@@ -293,20 +294,33 @@ module.exports = function (app) {
         });
       }
 
-      console.log("✅ Reset token verified, updating password");
+      console.log(
+        "✅ Reset token verified, updating password for client user ID:",
+        user.id
+      );
 
       // Hash the new password
       const hashedPassword = await bcrypt.hash(new_password, 10);
 
-      // Update user password and clear reset token
-      await sdk.update("user", user.id, {
-        password: hashedPassword,
-        reset_token: null,
-        reset_token_expiry: null,
-        updated_at: new Date(),
-      });
+      // Update user password and clear reset token using raw SQL to ensure proper update
+      const currentTime = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace("T", " ");
 
-      console.log("✅ Password reset successfully for:", email);
+      const updatePasswordSQL = `
+        UPDATE longtermhire_user
+        SET password = ?, reset_token = NULL, reset_token_expiry = NULL, updated_at = ?
+        WHERE id = ? AND role_id = 'member'
+      `;
+
+      await sdk.rawQuery(updatePasswordSQL, [
+        hashedPassword,
+        currentTime,
+        user.id,
+      ]);
+
+      console.log("✅ Password reset successfully for client:", email);
 
       return res.status(200).json({
         error: false,

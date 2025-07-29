@@ -179,6 +179,7 @@ module.exports = function (app) {
   app.put(
     "/v1/api/longtermhire/super_admin/equipment/:id",
     TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
     async (req, res) => {
       try {
         console.log(
@@ -248,6 +249,8 @@ module.exports = function (app) {
   // Update equipment availability
   app.put(
     "/v1/api/longtermhire/super_admin/equipment/:id/availability",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
     async (req, res) => {
       try {
         console.log(
@@ -290,11 +293,13 @@ module.exports = function (app) {
   app.delete(
     "/v1/api/longtermhire/super_admin/equipment/:id",
     TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
     async (req, res) => {
       try {
         console.log(
           "DELETE /v1/api/longtermhire/super_admin/equipment/:id called"
         );
+
         const sdk = app.get("sdk");
         sdk.setProjectId("longtermhire");
 
@@ -318,11 +323,15 @@ module.exports = function (app) {
           [equipmentId]
         );
 
-        // Delete equipment content if any
-        await sdk.rawQuery(
-          "DELETE FROM longtermhire_equipment_content WHERE equipment_id = ?",
-          [equipmentId]
-        );
+        // Delete equipment content if any (using correct table name)
+        try {
+          await sdk.rawQuery(
+            "DELETE FROM longtermhire_content WHERE equipment_id = ?",
+            [equipmentId]
+          );
+        } catch (contentError) {
+          console.log("No content to delete for equipment:", equipmentId);
+        }
 
         // Delete the equipment
         await sdk.rawQuery(
@@ -336,6 +345,101 @@ module.exports = function (app) {
         });
       } catch (error) {
         console.error("Delete equipment error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message,
+        });
+      }
+    }
+  );
+
+  // Remove equipment discount for custom pricing
+  app.delete(
+    "/v1/api/longtermhire/super_admin/remove-equipment-discount",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        console.log(
+          "DELETE /v1/api/longtermhire/super_admin/remove-equipment-discount called"
+        );
+
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        const { client_user_id, equipment_id } = req.body;
+
+        if (!client_user_id || !equipment_id) {
+          return res.status(400).json({
+            error: true,
+            message: "Client user ID and equipment ID are required",
+          });
+        }
+
+        console.log(
+          "Removing equipment discount for client:",
+          client_user_id,
+          "equipment:",
+          equipment_id
+        );
+
+        // Check if client exists
+        const clientCheckSQL = `
+          SELECT id FROM longtermhire_client 
+          WHERE user_id = ?
+        `;
+        const clientExists = await sdk.rawQuery(clientCheckSQL, [
+          client_user_id,
+        ]);
+
+        if (!clientExists || clientExists.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Client not found",
+          });
+        }
+
+        // Check if equipment exists
+        const equipmentCheckSQL = `
+          SELECT id FROM longtermhire_equipment_item 
+          WHERE id = ?
+        `;
+        const equipmentExists = await sdk.rawQuery(equipmentCheckSQL, [
+          equipment_id,
+        ]);
+
+        if (!equipmentExists || equipmentExists.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Equipment not found",
+          });
+        }
+
+        // Remove custom equipment discount (if it exists in a custom discount table)
+        // For now, we'll remove the equipment assignment which effectively removes the discount
+        const removeAssignmentSQL = `
+          DELETE FROM longtermhire_client_equipment 
+          WHERE client_user_id = ? AND equipment_id = ?
+        `;
+
+        const result = await sdk.rawQuery(removeAssignmentSQL, [
+          client_user_id,
+          equipment_id,
+        ]);
+
+        console.log("Equipment discount removed successfully");
+
+        return res.status(200).json({
+          error: false,
+          message: "Equipment discount removed successfully",
+          data: {
+            client_user_id,
+            equipment_id,
+            removed: true,
+          },
+        });
+      } catch (error) {
+        console.error("Remove equipment discount error:", error);
         return res.status(500).json({
           error: true,
           message: error.message,

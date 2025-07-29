@@ -376,7 +376,11 @@ module.exports = function (app) {
           c.updated_at,
           u.email,
           cp.pricing_package_id,
-          pp.name as pricing_package_name
+          pp.name as pricing_package_name,
+          CASE 
+            WHEN cp.pricing_package_id IS NULL THEN TRUE
+            ELSE FALSE
+          END as custom
         FROM longtermhire_client c
         LEFT JOIN longtermhire_user u ON c.user_id = u.id
         LEFT JOIN longtermhire_client_pricing cp ON c.user_id = cp.client_user_id
@@ -647,6 +651,7 @@ module.exports = function (app) {
   // Assign equipment to client
   app.post(
     "/v1/api/longtermhire/super_admin/assign-equipment",
+    TokenMiddleware(),
     async (req, res) => {
       try {
         console.log(
@@ -663,6 +668,57 @@ module.exports = function (app) {
           .slice(0, 19)
           .replace("T", " ");
 
+        // Check if client exists
+        const clientCheckSQL = `
+          SELECT id FROM longtermhire_client 
+          WHERE user_id = ?
+        `;
+        const clientExists = await sdk.rawQuery(clientCheckSQL, [
+          client_user_id,
+        ]);
+
+        if (!clientExists || clientExists.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Client not found",
+          });
+        }
+
+        // Check if client has custom pricing - if so, remove all equipment assignments
+        const clientPricingSQL = `
+          SELECT cp.pricing_package_id
+          FROM longtermhire_client_pricing cp
+          WHERE cp.client_user_id = ?
+          LIMIT 1
+        `;
+        const clientPricingResult = await sdk.rawQuery(clientPricingSQL, [
+          client_user_id,
+        ]);
+        const hasCustomPricing =
+          clientPricingResult.length > 0 &&
+          clientPricingResult[0].pricing_package_id === null;
+
+        if (hasCustomPricing) {
+          // If client has custom pricing, remove all equipment assignments
+          const deleteAllSQL = `DELETE FROM longtermhire_client_equipment WHERE client_user_id = ?`;
+          await sdk.rawQuery(deleteAllSQL, [client_user_id]);
+          console.log(
+            "Client has custom pricing - removed all equipment assignments for client:",
+            client_user_id
+          );
+
+          return res.status(200).json({
+            error: false,
+            message:
+              "Client has custom pricing - equipment assignments removed",
+            data: {
+              client_user_id,
+              custom: true,
+              equipment_removed: true,
+            },
+          });
+        }
+
         // First, remove existing assignments for this client
         const deleteSQL = `DELETE FROM longtermhire_client_equipment WHERE client_user_id = ?`;
         await sdk.rawQuery(deleteSQL, [client_user_id]);
@@ -674,6 +730,20 @@ module.exports = function (app) {
         // Then insert new assignments
         if (equipment_ids && equipment_ids.length > 0) {
           for (const equipmentId of equipment_ids) {
+            // Check if equipment exists
+            const equipmentCheckSQL = `
+              SELECT id FROM longtermhire_equipment_item 
+              WHERE id = ?
+            `;
+            const equipmentExists = await sdk.rawQuery(equipmentCheckSQL, [
+              equipmentId,
+            ]);
+
+            if (!equipmentExists || equipmentExists.length === 0) {
+              console.log(`Equipment ${equipmentId} not found, skipping...`);
+              continue;
+            }
+
             const insertSQL = `
               INSERT INTO longtermhire_client_equipment (client_user_id, equipment_id, assigned_by, created_at)
               VALUES (?, ?, ?, ?)
@@ -681,7 +751,7 @@ module.exports = function (app) {
             await sdk.rawQuery(insertSQL, [
               client_user_id,
               equipmentId,
-              2, // Use current admin user ID 2
+              req.user_id || 2, // Use current admin user ID
               currentTime,
             ]);
             console.log(
@@ -693,6 +763,11 @@ module.exports = function (app) {
         return res.status(200).json({
           error: false,
           message: "Equipment assigned successfully",
+          data: {
+            client_user_id,
+            custom: false,
+            equipment_count: equipment_ids ? equipment_ids.length : 0,
+          },
         });
       } catch (error) {
         console.error("Assign equipment error:", error);
@@ -707,6 +782,7 @@ module.exports = function (app) {
   // Assign pricing to client
   app.post(
     "/v1/api/longtermhire/super_admin/assign-pricing",
+    TokenMiddleware(),
     async (req, res) => {
       try {
         console.log(
@@ -724,6 +800,22 @@ module.exports = function (app) {
           .slice(0, 19)
           .replace("T", " ");
 
+        // Check if client exists
+        const clientCheckSQL = `
+          SELECT id FROM longtermhire_client 
+          WHERE user_id = ?
+        `;
+        const clientExists = await sdk.rawQuery(clientCheckSQL, [
+          client_user_id,
+        ]);
+
+        if (!clientExists || clientExists.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Client not found",
+          });
+        }
+
         // First, remove existing pricing assignment for this client
         const deleteSQL = `DELETE FROM longtermhire_client_pricing WHERE client_user_id = ?`;
         await sdk.rawQuery(deleteSQL, [client_user_id]);
@@ -740,15 +832,13 @@ module.exports = function (app) {
           ) {
             // Handle custom discount
             const insertSQL = `
-              INSERT INTO longtermhire_client_pricing (client_user_id, pricing_package_id, custom_discount_type, custom_discount_value, assigned_by, created_at)
-              VALUES (?, ?, ?, ?, ?, ?)
+              INSERT INTO longtermhire_client_pricing (client_user_id, pricing_package_id, assigned_by, created_at)
+              VALUES (?, ?, ?, ?)
             `;
             await sdk.rawQuery(insertSQL, [
               client_user_id,
               null, // Set pricing_package_id to NULL for custom discounts
-              custom_discount?.discountType || "percentage",
-              custom_discount?.discountValue || 0,
-              2, // Use current admin user ID 2
+              req.user_id || 2, // Use current admin user ID
               currentTime,
             ]);
             console.log(
@@ -760,6 +850,23 @@ module.exports = function (app) {
             );
           } else {
             // Handle regular pricing package
+
+            // Check if pricing package exists
+            const packageCheckSQL = `
+              SELECT id FROM longtermhire_pricing_package 
+              WHERE id = ?
+            `;
+            const packageExists = await sdk.rawQuery(packageCheckSQL, [
+              pricing_package_id,
+            ]);
+
+            if (!packageExists || packageExists.length === 0) {
+              return res.status(404).json({
+                error: true,
+                message: "Pricing package not found",
+              });
+            }
+
             const insertSQL = `
               INSERT INTO longtermhire_client_pricing (client_user_id, pricing_package_id, assigned_by, created_at)
               VALUES (?, ?, ?, ?)
@@ -767,7 +874,7 @@ module.exports = function (app) {
             await sdk.rawQuery(insertSQL, [
               client_user_id,
               pricing_package_id,
-              2, // Use current admin user ID 2
+              req.user_id || 2, // Use current admin user ID
               currentTime,
             ]);
             console.log(
@@ -779,6 +886,10 @@ module.exports = function (app) {
         return res.status(200).json({
           error: false,
           message: "Pricing assigned successfully",
+          data: {
+            client_user_id,
+            pricing_package_id: pricing_package_id,
+          },
         });
       } catch (error) {
         console.error("Assign pricing error:", error);

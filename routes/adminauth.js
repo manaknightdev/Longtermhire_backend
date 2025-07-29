@@ -251,7 +251,7 @@ module.exports = function (app) {
 
   // Change Admin Password
   app.put(
-    "/v1/api/longtermhire/admin/change-password",
+    "/v1/api/longtermhire/admin/reset-password",
     TokenMiddleware(),
     RoleMiddleware(["super_admin"]),
     async (req, res) => {
