@@ -5,6 +5,118 @@ const chatService = require("../services/ChatService");
 module.exports = function (app) {
   console.log("Loading chat routes...");
 
+  // Set user as online
+  app.post(
+    "/v1/api/longtermhire/chat/online",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin", "member"]),
+    async (req, res) => {
+      try {
+        const userId = req.user_id;
+        await chatService.setUserOnline(userId);
+
+        return res.status(200).json({
+          error: false,
+          message: "User marked as online",
+        });
+      } catch (error) {
+        console.error("Set online error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
+
+  // Set user as offline
+  app.post(
+    "/v1/api/longtermhire/chat/offline",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin", "member"]),
+    async (req, res) => {
+      try {
+        const userId = req.user_id;
+        await chatService.setUserOffline(userId);
+
+        return res.status(200).json({
+          error: false,
+          message: "User marked as offline",
+        });
+      } catch (error) {
+        console.error("Set offline error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
+
+  // Send heartbeat to maintain online status
+  app.post(
+    "/v1/api/longtermhire/chat/heartbeat",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin", "member"]),
+    async (req, res) => {
+      try {
+        const userId = req.user_id;
+        await chatService.setUserOnline(userId);
+
+        return res.status(200).json({
+          error: false,
+          message: "Heartbeat received",
+        });
+      } catch (error) {
+        console.error("Heartbeat error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
+
+  // Check if any admin is online
+  app.get(
+    "/v1/api/longtermhire/chat/admin-status",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin", "member"]),
+    async (req, res) => {
+      try {
+        const onlineUsers = await chatService.getOnlineUsers();
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        // Get admin user IDs
+        const adminSQL = `SELECT id FROM longtermhire_user WHERE role_id = 'super_admin'`;
+        const admins = await sdk.rawQuery(adminSQL);
+        const adminIds = admins.map((admin) => admin.id.toString());
+
+        // Check if any admin is online
+        const onlineAdmins = onlineUsers.filter((userId) =>
+          adminIds.includes(userId)
+        );
+        const hasOnlineAdmin = onlineAdmins.length > 0;
+
+        return res.status(200).json({
+          error: false,
+          data: {
+            has_online_admin: hasOnlineAdmin,
+            online_admin_count: onlineAdmins.length,
+            total_admin_count: adminIds.length,
+          },
+        });
+      } catch (error) {
+        console.error("Admin status check error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
+
   // Get chat conversations for a user
   app.get(
     "/v1/api/longtermhire/chat/conversations",
@@ -224,7 +336,30 @@ module.exports = function (app) {
           });
         }
 
-        // Insert message into database
+        // Check if sender is a client and if any admin is online
+        const senderRoleSQL = `SELECT role_id FROM longtermhire_user WHERE id = ?`;
+        const senderRole = await sdk.rawQuery(senderRoleSQL, [fromUserId]);
+        const isClient = senderRole[0]?.role_id === "member";
+
+        let shouldSendAutoResponse = false;
+        let autoResponseMessageId = null;
+
+        if (isClient) {
+          // Check if any admin is online
+          const onlineUsers = await chatService.getOnlineUsers();
+          const adminSQL = `SELECT id FROM longtermhire_user WHERE role_id = 'super_admin'`;
+          const admins = await sdk.rawQuery(adminSQL);
+          const adminIds = admins.map((admin) => admin.id.toString());
+          const onlineAdmins = onlineUsers.filter((userId) =>
+            adminIds.includes(userId)
+          );
+
+          if (onlineAdmins.length === 0) {
+            shouldSendAutoResponse = true;
+          }
+        }
+
+        // Insert original message into database
         const insertSQL = `
           INSERT INTO longtermhire_chat_messages 
           (from_user_id, to_user_id, message, message_type, created_at)
@@ -272,6 +407,62 @@ module.exports = function (app) {
           message,
         ]);
 
+        // Send auto-response if no admin is online
+        if (shouldSendAutoResponse) {
+          try {
+            // Get any admin user ID for auto-response
+            const adminSQL = `SELECT id FROM longtermhire_user WHERE role_id = 'super_admin' LIMIT 1`;
+            const adminResult = await sdk.rawQuery(adminSQL);
+
+            if (adminResult && adminResult.length > 0) {
+              const adminId = adminResult[0].id;
+              const autoResponseText =
+                "Thank you for your message. Our team is currently offline, but we'll respond within 24 hours during business hours.";
+
+              // Insert auto-response message
+              const autoResponseSQL = `
+                INSERT INTO longtermhire_chat_messages 
+                (from_user_id, to_user_id, message, message_type, created_at)
+                VALUES (?, ?, ?, 'auto_response', NOW())
+              `;
+
+              const autoResponseResult = await sdk.rawQuery(autoResponseSQL, [
+                adminId,
+                fromUserId,
+                autoResponseText,
+              ]);
+
+              autoResponseMessageId = autoResponseResult.insertId;
+
+              // Update conversation with auto-response
+              await sdk.rawQuery(upsertConversationSQL, [
+                adminId,
+                fromUserId,
+                adminId,
+                fromUserId,
+                autoResponseMessageId,
+                autoResponseText,
+              ]);
+
+              // Send auto-response via Redis
+              await chatService.sendMessage(adminId, fromUserId, {
+                id: autoResponseMessageId,
+                message: autoResponseText,
+                message_type: "auto_response",
+              });
+
+              console.log(
+                `✅ Auto-response sent to client ${fromUserId} - no admin online`
+              );
+            }
+          } catch (autoResponseError) {
+            console.error(
+              "⚠️ Failed to send auto-response:",
+              autoResponseError
+            );
+          }
+        }
+
         // Send real-time message via Redis
         await chatService.sendMessage(fromUserId, to_user_id, {
           id: messageId,
@@ -282,7 +473,11 @@ module.exports = function (app) {
         return res.status(200).json({
           error: false,
           message: "Message sent successfully",
-          data: { id: messageId },
+          data: {
+            id: messageId,
+            auto_response_sent: shouldSendAutoResponse,
+            auto_response_id: autoResponseMessageId,
+          },
         });
       } catch (error) {
         console.error("Send message error:", error);
