@@ -184,6 +184,14 @@ module.exports = function (app) {
           });
         }
 
+        // ALTERNATING LOGIC: When assigning equipment-specific custom discount, remove pricing package
+        const deletePricingSQL = `DELETE FROM longtermhire_client_pricing WHERE client_user_id = ?`;
+        await sdk.rawQuery(deletePricingSQL, [searchClientId]);
+        console.log(
+          "Removed existing pricing package assignment for client (equipment custom discount assignment):",
+          searchClientId
+        );
+
         const assignmentId = existingAssignment[0].id;
 
         // Update the assignment with custom discount using raw SQL
@@ -201,7 +209,13 @@ module.exports = function (app) {
 
         return res.status(200).json({
           error: false,
-          message: "Custom discount assigned to equipment successfully",
+          message:
+            "Custom discount assigned to equipment successfully (pricing package removed)",
+          data: {
+            client_user_id: searchClientId,
+            equipment_id: searchEquipmentId,
+            pricing_removed: true,
+          },
         });
       } catch (error) {
         console.error("Assign equipment discount error:", error);
