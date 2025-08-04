@@ -644,4 +644,99 @@ module.exports = function (app) {
       }
     }
   );
+
+  // Delete specific image from content
+  app.delete(
+    "/v1/api/longtermhire/super_admin/content/:contentId/images/:imageId",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const { contentId, imageId } = req.params;
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        console.log(`🗑️ Deleting image ${imageId} from content ${contentId}`);
+
+        // 1. Verify content exists
+        const contentCheckSQL =
+          "SELECT id FROM longtermhire_content WHERE id = ?";
+        const contentExists = await sdk.rawQuery(contentCheckSQL, [contentId]);
+
+        if (!contentExists || contentExists.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Content not found",
+          });
+        }
+
+        // 2. Verify image exists and belongs to this content
+        const imageCheckSQL = `
+          SELECT id, is_main 
+          FROM longtermhire_content_images 
+          WHERE id = ? AND content_id = ?
+        `;
+        const imageExists = await sdk.rawQuery(imageCheckSQL, [
+          imageId,
+          contentId,
+        ]);
+
+        if (!imageExists || imageExists.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Image not found or does not belong to this content",
+          });
+        }
+
+        const wasMainImage = imageExists[0].is_main;
+
+        // 3. Delete the specific image
+        const deleteImageSQL =
+          "DELETE FROM longtermhire_content_images WHERE id = ?";
+        await sdk.rawQuery(deleteImageSQL, [imageId]);
+
+        console.log(`✅ Image ${imageId} deleted successfully`);
+
+        // 4. If it was the main image, set the first remaining image as main
+        if (wasMainImage) {
+          const remainingImagesSQL = `
+            SELECT id 
+            FROM longtermhire_content_images 
+            WHERE content_id = ? 
+            ORDER BY image_order ASC, id ASC 
+            LIMIT 1
+          `;
+          const remainingImages = await sdk.rawQuery(remainingImagesSQL, [
+            contentId,
+          ]);
+
+          if (remainingImages && remainingImages.length > 0) {
+            const newMainImageId = remainingImages[0].id;
+            const setNewMainSQL = `
+              UPDATE longtermhire_content_images 
+              SET is_main = TRUE 
+              WHERE id = ?
+            `;
+            await sdk.rawQuery(setNewMainSQL, [newMainImageId]);
+            console.log(`🔄 Set image ${newMainImageId} as new main image`);
+          }
+        }
+
+        return res.status(200).json({
+          error: false,
+          message: "Image deleted successfully",
+          data: {
+            deleted_image_id: imageId,
+            was_main_image: wasMainImage,
+          },
+        });
+      } catch (error) {
+        console.error("Delete image error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
 };

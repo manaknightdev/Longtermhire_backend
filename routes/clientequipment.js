@@ -23,13 +23,16 @@ module.exports = function (app) {
             c.banner_description,
             c.image_url as content_image,
             GROUP_CONCAT(
-              JSON_OBJECT(
-                'id', ci.id,
-                'image_url', ci.image_url,
-                'image_order', ci.image_order,
-                'is_main', ci.is_main,
-                'caption', ci.caption
-              ) ORDER BY ci.image_order ASC SEPARATOR '|||'
+              CASE WHEN ci.id IS NOT NULL THEN
+                JSON_OBJECT(
+                  'id', ci.id,
+                  'image_url', ci.image_url,
+                  'image_order', ci.image_order,
+                  'is_main', ci.is_main,
+                  'caption', ci.caption
+                )
+              ELSE NULL END
+              ORDER BY ci.image_order ASC SEPARATOR '|||'
             ) as content_images,
             pp.name as package_name,
             pp.description as package_description,
@@ -47,7 +50,7 @@ module.exports = function (app) {
             END as discounted_price
           FROM longtermhire_client_equipment ce
           JOIN longtermhire_equipment_item e ON ce.equipment_id = e.id
-          LEFT JOIN longtermhire_content c ON e.equipment_id = c.equipment_id
+          LEFT JOIN longtermhire_content c ON e.id = c.equipment_id
           LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
           LEFT JOIN longtermhire_client_pricing cp ON cp.client_user_id = ce.client_user_id
           LEFT JOIN longtermhire_pricing_package pp ON cp.pricing_package_id = pp.id
@@ -59,6 +62,31 @@ module.exports = function (app) {
         );
 
         console.log(`✅ Found ${equipment.length} equipment items for client`);
+
+        // Debug: Log first equipment item to see what we're getting
+        if (equipment.length > 0) {
+          console.log("🔍 Debug - First equipment item:", {
+            id: equipment[0].id,
+            equipment_id: equipment[0].equipment_id,
+            equipment_name: equipment[0].equipment_name,
+            content_description: equipment[0].content_description,
+            content_image: equipment[0].content_image,
+            content_images: equipment[0].content_images,
+            content_images_length: equipment[0].content_images
+              ? equipment[0].content_images.length
+              : 0,
+          });
+        }
+
+        // Debug: Log all equipment items to see content_images
+        console.log("🔍 Debug - All equipment content_images:");
+        equipment.forEach((item, index) => {
+          console.log(
+            `  ${index + 1}. ${item.equipment_name} (${
+              item.equipment_id
+            }): content_images = "${item.content_images}"`
+          );
+        });
 
         // Process equipment data to determine discount information and parse images
         const processedEquipment = equipment.map((item) => {
@@ -88,18 +116,19 @@ module.exports = function (app) {
 
           // Process images data
           let images = [];
-          if (item.content_images) {
+          if (item.content_images && item.content_images !== "null") {
             try {
               const imageStrings = item.content_images.split("|||");
               images = imageStrings
                 .map((imgStr) => {
                   try {
-                    return JSON.parse(imgStr);
+                    const parsed = JSON.parse(imgStr);
+                    return parsed && parsed.id !== null ? parsed : null;
                   } catch (e) {
                     return null;
                   }
                 })
-                .filter((img) => img !== null);
+                .filter((img) => img !== null && img.id !== null);
             } catch (e) {
               images = [];
             }
@@ -123,7 +152,7 @@ module.exports = function (app) {
               description: item.content_description,
               banner_description: item.banner_description,
               image: item.content_image, // Keep for backward compatibility
-              images: images, // New field with all images
+              images: images, // Use the parsed images from longtermhire_content_images table
             },
             pricing_package: {
               name: item.package_name,
@@ -188,13 +217,16 @@ module.exports = function (app) {
             c.banner_description,
             c.image_url as content_image,
             GROUP_CONCAT(
-              JSON_OBJECT(
-                'id', ci.id,
-                'image_url', ci.image_url,
-                'image_order', ci.image_order,
-                'is_main', ci.is_main,
-                'caption', ci.caption
-              ) ORDER BY ci.image_order ASC SEPARATOR '|||'
+              CASE WHEN ci.id IS NOT NULL THEN
+                JSON_OBJECT(
+                  'id', ci.id,
+                  'image_url', ci.image_url,
+                  'image_order', ci.image_order,
+                  'is_main', ci.is_main,
+                  'caption', ci.caption
+                )
+              ELSE NULL END
+              ORDER BY ci.image_order ASC SEPARATOR '|||'
             ) as content_images,
             pp.name as package_name,
             pp.description as package_description,
@@ -212,7 +244,7 @@ module.exports = function (app) {
             END as discounted_price
           FROM longtermhire_client_equipment ce
           JOIN longtermhire_equipment_item e ON ce.equipment_id = e.id
-          LEFT JOIN longtermhire_content c ON e.equipment_id = c.equipment_id
+          LEFT JOIN longtermhire_content c ON e.id = c.equipment_id
           LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
           LEFT JOIN longtermhire_client_pricing cp ON cp.client_user_id = ce.client_user_id
           LEFT JOIN longtermhire_pricing_package pp ON cp.pricing_package_id = pp.id
@@ -257,18 +289,19 @@ module.exports = function (app) {
 
         // Process images data
         let images = [];
-        if (item.content_images) {
+        if (item.content_images && item.content_images !== "null") {
           try {
             const imageStrings = item.content_images.split("|||");
             images = imageStrings
               .map((imgStr) => {
                 try {
-                  return JSON.parse(imgStr);
+                  const parsed = JSON.parse(imgStr);
+                  return parsed && parsed.id !== null ? parsed : null;
                 } catch (e) {
                   return null;
                 }
               })
-              .filter((img) => img !== null);
+              .filter((img) => img !== null && img.id !== null);
           } catch (e) {
             images = [];
           }
@@ -294,7 +327,7 @@ module.exports = function (app) {
               description: item.content_description,
               banner_description: item.banner_description,
               image: item.content_image, // Keep for backward compatibility
-              images: images, // New field with all images
+              images: images, // Use the parsed images from longtermhire_content_images table
             },
             pricing_package: {
               name: item.package_name,
