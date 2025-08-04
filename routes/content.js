@@ -76,24 +76,61 @@ module.exports = function (app) {
         const total = countResult[0]?.total || 0;
 
         // Process images data
+        console.log(
+          "🔍 Raw content data from database:",
+          JSON.stringify(content, null, 2)
+        );
+
         const processedContent = content.map((item) => {
+          console.log(
+            `📋 Processing content ID ${item.id}, raw images field:`,
+            item.images
+          );
+
           if (item.images) {
             try {
               // Parse the GROUP_CONCAT JSON objects
               const imageStrings = item.images.split(",");
+              console.log(
+                `🔄 Image strings for content ${item.id}:`,
+                imageStrings
+              );
+
               item.images = imageStrings
                 .map((imgStr) => {
                   try {
-                    return JSON.parse(imgStr);
+                    const parsed = JSON.parse(imgStr);
+                    console.log(
+                      `✅ Parsed image for content ${item.id}:`,
+                      parsed
+                    );
+                    return parsed;
                   } catch (e) {
+                    console.log(
+                      `❌ Failed to parse image string for content ${item.id}:`,
+                      imgStr,
+                      e.message
+                    );
                     return null;
                   }
                 })
                 .filter((img) => img !== null);
+
+              console.log(
+                `🎯 Final images array for content ${item.id}:`,
+                item.images
+              );
             } catch (e) {
+              console.log(
+                `❌ Error processing images for content ${item.id}:`,
+                e.message
+              );
               item.images = [];
             }
           } else {
+            console.log(
+              `⚠️ No images data for content ${item.id} - images field is null/undefined`
+            );
             item.images = [];
           }
           return item;
