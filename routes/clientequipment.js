@@ -29,7 +29,7 @@ module.exports = function (app) {
                 'image_order', ci.image_order,
                 'is_main', ci.is_main,
                 'caption', ci.caption
-              ) ORDER BY ci.image_order ASC
+              ) ORDER BY ci.image_order ASC SEPARATOR '|||'
             ) as content_images,
             pp.name as package_name,
             pp.description as package_description,
@@ -90,7 +90,7 @@ module.exports = function (app) {
           let images = [];
           if (item.content_images) {
             try {
-              const imageStrings = item.content_images.split(",");
+              const imageStrings = item.content_images.split("|||");
               images = imageStrings
                 .map((imgStr) => {
                   try {
@@ -194,7 +194,7 @@ module.exports = function (app) {
                 'image_order', ci.image_order,
                 'is_main', ci.is_main,
                 'caption', ci.caption
-              ) ORDER BY ci.image_order ASC
+              ) ORDER BY ci.image_order ASC SEPARATOR '|||'
             ) as content_images,
             pp.name as package_name,
             pp.description as package_description,
@@ -259,7 +259,7 @@ module.exports = function (app) {
         let images = [];
         if (item.content_images) {
           try {
-            const imageStrings = item.content_images.split(",");
+            const imageStrings = item.content_images.split("|||");
             images = imageStrings
               .map((imgStr) => {
                 try {
