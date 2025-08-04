@@ -198,58 +198,60 @@ module.exports = function (app) {
 
           // Create HTML email template
           const htmlContent = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
-              <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                <div style="text-align: center; margin-bottom: 30px;">
-                  <h1 style="color: #333; margin: 0; font-size: 28px;">🎉 Welcome to Equipment Hire Platform</h1>
-                  <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">You've been invited to join our platform!</p>
+            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
+              <div style="background-color: #1F1F20; padding: 30px; border-radius: 8px; border: 2px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                
+                <!-- Header with Logo -->
+                <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
+                  <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
+                       alt="" 
+                       style="width: 240px; height: 135px; margin-bottom: 15px;">
+                  <h1 style="color: #E5E5E5; margin: 0; font-size: 28px; font-weight: 400;">Welcome to Longterm Hire</h1>
+                  <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 16px;">Your equipment rental portal is ready!</p>
                 </div>
 
-                <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #FDCE06;">
-                  <h3 style="color: #333; margin-top: 0; font-size: 20px;">👋 Hello ${client_name}!</h3>
-                  <p style="color: #555; line-height: 1.6; margin: 15px 0;">
-                    You have been invited to join the Equipment Hire Platform for <strong>${company_name}</strong>.
-                    Your account has been created and you can now access our equipment rental services.
+                <!-- Welcome Message -->
+                <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
+                  <h3 style="color: #E5E5E5; margin-top: 0; font-size: 20px; font-weight: 400;">👋 Hello ${client_name}!</h3>
+                  <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
+                    Welcome to <strong>Longterm Hire</strong>! Your account has been created for <strong>${company_name}</strong> 
+                    and you now have access to our comprehensive equipment rental platform.
                   </p>
                 </div>
 
-                <div style="background: #e8f4fd; padding: 25px; border-radius: 8px; margin: 25px 0;">
-                  <h3 style="color: #333; margin-top: 0; font-size: 18px;">🔐 Your Login Credentials</h3>
+                <!-- Login Credentials -->
+                <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
+                  <h3 style="color: #E5E5E5; margin-top: 0; font-size: 18px; font-weight: 400;">🔐 Your Login Credentials</h3>
                   <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                      <td style="padding: 8px 0; color: #555; font-weight: bold;">Email:</td>
-                      <td style="padding: 8px 0; color: #333; font-family: monospace; background: white; padding: 5px 10px; border-radius: 4px;">${email}</td>
+                      <td style="padding: 12px 0; color: #E5E5E5; font-weight: 400; font-size: 14px;">Email:</td>
+                      <td style="padding: 12px 0; color: #E5E5E5; font-family: monospace; background: #292A2B; padding: 8px 12px; border-radius: 4px; border: 1px solid #444444;">${email}</td>
                     </tr>
                     <tr>
-                      <td style="padding: 8px 0; color: #555; font-weight: bold;">Password:</td>
-                      <td style="padding: 8px 0; color: #333; font-family: monospace; background: white; padding: 5px 10px; border-radius: 4px;">${plainPassword}</td>
+                      <td style="padding: 12px 0; color: #E5E5E5; font-weight: 400; font-size: 14px;">Password:</td>
+                      <td style="padding: 12px 0; color: #E5E5E5; font-family: monospace; background: #292A2B; padding: 8px 12px; border-radius: 4px; border: 1px solid #444444;">${plainPassword}</td>
                     </tr>
                     <tr>
-                      <td style="padding: 8px 0; color: #555; font-weight: bold;">Login URL:</td>
-                      <td style="padding: 8px 0;"><a href="${loginUrl}" style="color: #007bff; text-decoration: none;">${loginUrl}</a></td>
+                      <td style="padding: 12px 0; color: #E5E5E5; font-weight: 400; font-size: 14px;">Login URL:</td>
+                      <td style="padding: 12px 0;"><a href="${loginUrl}" style="color: #FDCE06; text-decoration: none; font-size: 14px;">${loginUrl}</a></td>
                     </tr>
                   </table>
                 </div>
 
+                <!-- Login Button -->
                 <div style="text-align: center; margin: 30px 0;">
                   <a href="${loginUrl}"
-                     style="background: #FDCE06; color: #000; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    🚀 Access Your Account Now
+                     style="background: #FDCE06; color: #1F1F20; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; border: 1px solid #FDCE06;">
+                    🚀 Login to Your Account
                   </a>
                 </div>
 
-                <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #ffeaa7;">
-                  <h4 style="color: #856404; margin-top: 0; font-size: 16px;">🔒 Security Reminder</h4>
-                  <p style="color: #856404; margin: 10px 0 0 0; font-size: 14px; line-height: 1.5;">
-                    For security reasons, please change your password after your first login.
-                    Keep your login credentials secure and do not share them with others.
-                  </p>
-                </div>
-
-                <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
-                  <p style="color: #666; font-size: 14px; margin: 0;">
-                    Need help? Contact our support team or visit our help center.<br>
-                    <small>This invitation was sent on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</small>
+              
+                <!-- Footer -->
+                <div style="border-top: 1px solid #333333; padding-top: 20px; margin-top: 30px; text-align: center;">
+                  <p style="color: #ADAEBC; font-size: 14px; margin: 0;">
+                    Need assistance? Contact our support team.<br>
+                    <small style="color: #666666;">Invitation sent on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</small>
                   </p>
                 </div>
               </div>
@@ -258,9 +260,9 @@ module.exports = function (app) {
 
           // Send email using MailService
           const emailResult = await mailService.send(
-            config.mail?.from_mail || "noreply@equipmenthire.com",
+            config.mail?.from_mail || "noreply@longtermhire.com",
             email,
-            `🎉 Welcome to Equipment Hire Platform - Your Account is Ready!`,
+            `🎉 Welcome to Longterm Hire - Your Account is Ready!`,
             htmlContent
           );
 
@@ -376,16 +378,7 @@ module.exports = function (app) {
           c.updated_at,
           u.email,
           cp.pricing_package_id,
-          pp.name as pricing_package_name,
-          CASE 
-            WHEN cp.pricing_package_id IS NOT NULL THEN 'package'
-            WHEN EXISTS (
-              SELECT 1 FROM longtermhire_client_equipment ce 
-              WHERE ce.client_user_id = c.user_id 
-              AND (ce.custom_discount_type IS NOT NULL OR ce.custom_discount_value IS NOT NULL)
-            ) THEN 'custom'
-            ELSE 'none'
-          END as pricing_type
+          pp.name as pricing_package_name
         FROM longtermhire_client c
         LEFT JOIN longtermhire_user u ON c.user_id = u.id
         LEFT JOIN longtermhire_client_pricing cp ON c.user_id = cp.client_user_id
@@ -672,50 +665,17 @@ module.exports = function (app) {
           .slice(0, 19)
           .replace("T", " ");
 
-        // Check if client exists
-        const clientCheckSQL = `
-          SELECT id FROM longtermhire_client 
-          WHERE user_id = ?
-        `;
-        const clientExists = await sdk.rawQuery(clientCheckSQL, [
-          client_user_id,
-        ]);
-
-        if (!clientExists || clientExists.length === 0) {
-          return res.status(404).json({
-            error: true,
-            message: "Client not found",
-          });
-        }
-
-        // Equipment assignment is independent - don't remove pricing packages
-        // Only remove existing equipment assignments to replace them
-
-        // First, remove existing equipment assignments for this client
-        const deleteEquipmentSQL = `DELETE FROM longtermhire_client_equipment WHERE client_user_id = ?`;
-        await sdk.rawQuery(deleteEquipmentSQL, [client_user_id]);
+        // First, remove existing assignments for this client
+        const deleteSQL = `DELETE FROM longtermhire_client_equipment WHERE client_user_id = ?`;
+        await sdk.rawQuery(deleteSQL, [client_user_id]);
         console.log(
           "Removed existing equipment assignments for client:",
           client_user_id
         );
 
-        // Then insert new equipment assignments
+        // Then insert new assignments
         if (equipment_ids && equipment_ids.length > 0) {
           for (const equipmentId of equipment_ids) {
-            // Check if equipment exists
-            const equipmentCheckSQL = `
-              SELECT id FROM longtermhire_equipment_item 
-              WHERE id = ?
-            `;
-            const equipmentExists = await sdk.rawQuery(equipmentCheckSQL, [
-              equipmentId,
-            ]);
-
-            if (!equipmentExists || equipmentExists.length === 0) {
-              console.log(`Equipment ${equipmentId} not found, skipping...`);
-              continue;
-            }
-
             const insertSQL = `
               INSERT INTO longtermhire_client_equipment (client_user_id, equipment_id, assigned_by, created_at)
               VALUES (?, ?, ?, ?)
@@ -734,12 +694,7 @@ module.exports = function (app) {
 
         return res.status(200).json({
           error: false,
-          message: "Equipment assigned successfully (pricing package removed)",
-          data: {
-            client_user_id,
-            equipment_count: equipment_ids ? equipment_ids.length : 0,
-            pricing_removed: true,
-          },
+          message: "Equipment assigned successfully",
         });
       } catch (error) {
         console.error("Assign equipment error:", error);
@@ -770,19 +725,6 @@ module.exports = function (app) {
           .toISOString()
           .slice(0, 19)
           .replace("T", " ");
-
-        // ALTERNATING LOGIC: When assigning pricing package, remove equipment custom discounts only
-        // (Don't remove equipment assignments, just the custom discounts)
-        const updateEquipmentSQL = `
-          UPDATE longtermhire_client_equipment 
-          SET custom_discount_type = NULL, custom_discount_value = NULL 
-          WHERE client_user_id = ?
-        `;
-        await sdk.rawQuery(updateEquipmentSQL, [client_user_id]);
-        console.log(
-          "Removed equipment custom discounts for client (pricing package assignment):",
-          client_user_id
-        );
 
         // First, remove existing pricing assignment for this client
         const deleteSQL = `DELETE FROM longtermhire_client_pricing WHERE client_user_id = ?`;

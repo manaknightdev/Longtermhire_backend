@@ -1,6 +1,7 @@
 const TokenMiddleware = require("../../../baas/middleware/TokenMiddleware");
 const RoleMiddleware = require("../middleware/RoleMiddleware");
 const chatService = require("../services/ChatService");
+const ChatNotificationService = require("../services/ChatNotificationService");
 
 module.exports = function (app) {
   console.log("Loading chat routes...");
@@ -516,6 +517,56 @@ module.exports = function (app) {
           message,
           message_type,
         });
+
+        // Send email notification if admin is messaging a client
+        try {
+          const senderRoleSQL = `SELECT role_id FROM longtermhire_user WHERE id = ?`;
+          const senderRole = await sdk.rawQuery(senderRoleSQL, [fromUserId]);
+          const isAdmin = senderRole[0]?.role_id === "super_admin";
+
+          if (isAdmin) {
+            // Get client and admin data for email notification
+            const clientSQL = `
+              SELECT u.email, c.client_name, c.company_name, c.phone
+              FROM longtermhire_user u
+              LEFT JOIN longtermhire_client c ON u.id = c.user_id
+              WHERE u.id = ?
+            `;
+            const clientData = await sdk.rawQuery(clientSQL, [to_user_id]);
+
+            const adminSQL = `
+              SELECT u.email, p.first_name, p.last_name
+              FROM longtermhire_user u
+              LEFT JOIN longtermhire_preference p ON u.id = p.user_id
+              WHERE u.id = ?
+            `;
+            const adminData = await sdk.rawQuery(adminSQL, [fromUserId]);
+
+            if (
+              clientData &&
+              clientData.length > 0 &&
+              adminData &&
+              adminData.length > 0
+            ) {
+              const config = app.get("configuration");
+              const notificationService = new ChatNotificationService(config);
+
+              await notificationService.sendChatNotification(
+                to_user_id,
+                fromUserId,
+                clientData[0],
+                adminData[0],
+                sdk
+              );
+            }
+          }
+        } catch (notificationError) {
+          console.error(
+            "⚠️ Failed to send chat notification email:",
+            notificationError
+          );
+          // Don't fail the message send if notification fails
+        }
 
         return res.status(200).json({
           error: false,

@@ -65,8 +65,8 @@ class ChatService {
 
       for (const userId of onlineUsers) {
         const lastHeartbeat = await this.publisher.get(`heartbeat:${userId}`);
-        if (lastHeartbeat && now - parseInt(lastHeartbeat) > 120000) {
-          // 2 minutes
+        if (lastHeartbeat && now - parseInt(lastHeartbeat) > 60000) {
+          // 1 minute
           await this.setUserOffline(userId);
           console.log(`🧹 Cleaned up stale online status for user ${userId}`);
         }

@@ -14,7 +14,7 @@ module.exports = function (app) {
 
         console.log("🔍 Getting equipment for client user:", req.user_id);
 
-        // Get equipment assigned to this client with content and pricing
+        // Get equipment assigned to this client with content, images, and pricing
         const equipment = await sdk.rawQuery(
           `
           SELECT
@@ -22,6 +22,15 @@ module.exports = function (app) {
             c.description as content_description,
             c.banner_description,
             c.image_url as content_image,
+            GROUP_CONCAT(
+              JSON_OBJECT(
+                'id', ci.id,
+                'image_url', ci.image_url,
+                'image_order', ci.image_order,
+                'is_main', ci.is_main,
+                'caption', ci.caption
+              ) ORDER BY ci.image_order ASC
+            ) as content_images,
             pp.name as package_name,
             pp.description as package_description,
             pp.discount_type as package_discount_type,
@@ -38,10 +47,12 @@ module.exports = function (app) {
             END as discounted_price
           FROM longtermhire_client_equipment ce
           JOIN longtermhire_equipment_item e ON ce.equipment_id = e.id
-          LEFT JOIN longtermhire_content c ON e.id = c.equipment_id
+          LEFT JOIN longtermhire_content c ON e.equipment_id = c.equipment_id
+          LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
           LEFT JOIN longtermhire_client_pricing cp ON cp.client_user_id = ce.client_user_id
           LEFT JOIN longtermhire_pricing_package pp ON cp.pricing_package_id = pp.id
           WHERE ce.client_user_id = ? AND e.availability = 1
+          GROUP BY e.id, c.id, pp.id
           ORDER BY e.category_name, e.equipment_name
         `,
           [req.user_id]
@@ -49,7 +60,7 @@ module.exports = function (app) {
 
         console.log(`✅ Found ${equipment.length} equipment items for client`);
 
-        // Process equipment data to determine discount information
+        // Process equipment data to determine discount information and parse images
         const processedEquipment = equipment.map((item) => {
           // Determine discount type and value with proper priority:
           // 1. Equipment-specific custom discount (highest priority)
@@ -75,6 +86,25 @@ module.exports = function (app) {
             discount_source = "pricing_package";
           }
 
+          // Process images data
+          let images = [];
+          if (item.content_images) {
+            try {
+              const imageStrings = item.content_images.split(",");
+              images = imageStrings
+                .map((imgStr) => {
+                  try {
+                    return JSON.parse(imgStr);
+                  } catch (e) {
+                    return null;
+                  }
+                })
+                .filter((img) => img !== null);
+            } catch (e) {
+              images = [];
+            }
+          }
+
           return {
             id: item.id,
             equipment_id: item.equipment_id,
@@ -92,7 +122,8 @@ module.exports = function (app) {
             content: {
               description: item.content_description,
               banner_description: item.banner_description,
-              image: item.content_image,
+              image: item.content_image, // Keep for backward compatibility
+              images: images, // New field with all images
             },
             pricing_package: {
               name: item.package_name,
@@ -156,6 +187,15 @@ module.exports = function (app) {
             c.description as content_description,
             c.banner_description,
             c.image_url as content_image,
+            GROUP_CONCAT(
+              JSON_OBJECT(
+                'id', ci.id,
+                'image_url', ci.image_url,
+                'image_order', ci.image_order,
+                'is_main', ci.is_main,
+                'caption', ci.caption
+              ) ORDER BY ci.image_order ASC
+            ) as content_images,
             pp.name as package_name,
             pp.description as package_description,
             pp.discount_type as package_discount_type,
@@ -173,9 +213,11 @@ module.exports = function (app) {
           FROM longtermhire_client_equipment ce
           JOIN longtermhire_equipment_item e ON ce.equipment_id = e.id
           LEFT JOIN longtermhire_content c ON e.equipment_id = c.equipment_id
+          LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
           LEFT JOIN longtermhire_client_pricing cp ON cp.client_user_id = ce.client_user_id
           LEFT JOIN longtermhire_pricing_package pp ON cp.pricing_package_id = pp.id
           WHERE ce.client_user_id = ? AND e.id = ?
+          GROUP BY e.id, c.id, pp.id
         `,
           [req.user_id, equipmentId]
         );
@@ -213,6 +255,25 @@ module.exports = function (app) {
           discount_source = "pricing_package";
         }
 
+        // Process images data
+        let images = [];
+        if (item.content_images) {
+          try {
+            const imageStrings = item.content_images.split(",");
+            images = imageStrings
+              .map((imgStr) => {
+                try {
+                  return JSON.parse(imgStr);
+                } catch (e) {
+                  return null;
+                }
+              })
+              .filter((img) => img !== null);
+          } catch (e) {
+            images = [];
+          }
+        }
+
         return res.status(200).json({
           error: false,
           data: {
@@ -232,7 +293,8 @@ module.exports = function (app) {
             content: {
               description: item.content_description,
               banner_description: item.banner_description,
-              image: item.content_image,
+              image: item.content_image, // Keep for backward compatibility
+              images: images, // New field with all images
             },
             pricing_package: {
               name: item.package_name,
