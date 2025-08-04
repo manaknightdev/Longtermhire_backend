@@ -44,13 +44,17 @@ module.exports = function (app) {
         SELECT 
           c.*,
           GROUP_CONCAT(
-            JSON_OBJECT(
-              'id', ci.id,
-              'image_url', ci.image_url,
-              'image_order', ci.image_order,
-              'is_main', ci.is_main,
-              'caption', ci.caption
-            ) ORDER BY ci.image_order ASC
+            CASE 
+              WHEN ci.id IS NOT NULL THEN
+                JSON_OBJECT(
+                  'id', ci.id,
+                  'image_url', ci.image_url,
+                  'image_order', ci.image_order,
+                  'is_main', ci.is_main,
+                  'caption', ci.caption
+                )
+              ELSE NULL
+            END ORDER BY ci.image_order ASC SEPARATOR '|||'
           ) as images
         FROM longtermhire_content c
         LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
@@ -98,21 +102,14 @@ module.exports = function (app) {
             item.images
           );
 
-          if (item.images && item.images !== "null") {
+          if (item.images && item.images !== "null" && item.images !== "NULL") {
             try {
-              // For single image, it's already a JSON object
-              if (item.images.startsWith("{")) {
-                const parsed = JSON.parse(item.images);
-                item.images = [parsed];
+              // Check if it's multiple images (contains separator) or single image
+              if (item.images.includes("|||")) {
+                // Multiple images - split by separator
+                const imageStrings = item.images.split("|||");
                 console.log(
-                  `✅ Single image parsed for content ${item.id}:`,
-                  item.images
-                );
-              } else {
-                // For multiple images, split by comma
-                const imageStrings = item.images.split(",");
-                console.log(
-                  `🔄 Image strings for content ${item.id}:`,
+                  `🔄 Multiple images found for content ${item.id}:`,
                   imageStrings
                 );
 
@@ -134,10 +131,21 @@ module.exports = function (app) {
                       return null;
                     }
                   })
-                  .filter((img) => img !== null);
+                  .filter(
+                    (img) =>
+                      img !== null && img.id !== null && img.image_url !== null
+                  );
 
                 console.log(
                   `🎯 Final images array for content ${item.id}:`,
+                  item.images
+                );
+              } else {
+                // Single image - parse directly
+                const parsed = JSON.parse(item.images);
+                item.images = [parsed];
+                console.log(
+                  `✅ Single image parsed for content ${item.id}:`,
                   item.images
                 );
               }
