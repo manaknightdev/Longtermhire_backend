@@ -67,11 +67,22 @@ module.exports = function (app) {
         ${whereClause}
       `;
 
+        console.log("🔍 Executing content query with params:", [
+          ...searchParams,
+          limit,
+          offset,
+        ]);
+
         const content = await sdk.rawQuery(contentQuery, [
           ...searchParams,
           limit,
           offset,
         ]);
+
+        console.log(
+          "🔍 Raw database response:",
+          JSON.stringify(content, null, 2)
+        );
         const countResult = await sdk.rawQuery(countQuery, searchParams);
         const total = countResult[0]?.total || 0;
 
@@ -87,39 +98,49 @@ module.exports = function (app) {
             item.images
           );
 
-          if (item.images) {
+          if (item.images && item.images !== "null") {
             try {
-              // Parse the GROUP_CONCAT JSON objects
-              const imageStrings = item.images.split(",");
-              console.log(
-                `🔄 Image strings for content ${item.id}:`,
-                imageStrings
-              );
+              // For single image, it's already a JSON object
+              if (item.images.startsWith("{")) {
+                const parsed = JSON.parse(item.images);
+                item.images = [parsed];
+                console.log(
+                  `✅ Single image parsed for content ${item.id}:`,
+                  item.images
+                );
+              } else {
+                // For multiple images, split by comma
+                const imageStrings = item.images.split(",");
+                console.log(
+                  `🔄 Image strings for content ${item.id}:`,
+                  imageStrings
+                );
 
-              item.images = imageStrings
-                .map((imgStr) => {
-                  try {
-                    const parsed = JSON.parse(imgStr);
-                    console.log(
-                      `✅ Parsed image for content ${item.id}:`,
-                      parsed
-                    );
-                    return parsed;
-                  } catch (e) {
-                    console.log(
-                      `❌ Failed to parse image string for content ${item.id}:`,
-                      imgStr,
-                      e.message
-                    );
-                    return null;
-                  }
-                })
-                .filter((img) => img !== null);
+                item.images = imageStrings
+                  .map((imgStr) => {
+                    try {
+                      const parsed = JSON.parse(imgStr.trim());
+                      console.log(
+                        `✅ Parsed image for content ${item.id}:`,
+                        parsed
+                      );
+                      return parsed;
+                    } catch (e) {
+                      console.log(
+                        `❌ Failed to parse image string for content ${item.id}:`,
+                        imgStr,
+                        e.message
+                      );
+                      return null;
+                    }
+                  })
+                  .filter((img) => img !== null);
 
-              console.log(
-                `🎯 Final images array for content ${item.id}:`,
-                item.images
-              );
+                console.log(
+                  `🎯 Final images array for content ${item.id}:`,
+                  item.images
+                );
+              }
             } catch (e) {
               console.log(
                 `❌ Error processing images for content ${item.id}:`,
@@ -129,7 +150,7 @@ module.exports = function (app) {
             }
           } else {
             console.log(
-              `⚠️ No images data for content ${item.id} - images field is null/undefined`
+              `⚠️ No images data for content ${item.id} - images field is null/undefined/empty`
             );
             item.images = [];
           }
@@ -226,6 +247,17 @@ module.exports = function (app) {
 
           for (let i = 0; i < limitedImages.length; i++) {
             const image = limitedImages[i];
+
+            // If this image is marked as main, unset other main images first
+            if (image.is_main) {
+              const unsetMainSQL = `
+                UPDATE longtermhire_content_images 
+                SET is_main = FALSE 
+                WHERE content_id = ?
+              `;
+              await sdk.rawQuery(unsetMainSQL, [contentId]);
+            }
+
             const imageSQL = `
               INSERT INTO longtermhire_content_images
               (content_id, image_url, image_order, is_main, caption, created_at, updated_at)
@@ -352,11 +384,22 @@ module.exports = function (app) {
 
           for (let i = 0; i < limitedImages.length; i++) {
             const image = limitedImages[i];
+
+            // If this image is marked as main, unset other main images first
+            if (image.is_main) {
+              const unsetMainSQL = `
+                 UPDATE longtermhire_content_images 
+                 SET is_main = FALSE 
+                 WHERE content_id = ?
+               `;
+              await sdk.rawQuery(unsetMainSQL, [contentId]);
+            }
+
             const imageSQL = `
-                INSERT INTO longtermhire_content_images
-                (content_id, image_url, image_order, is_main, caption, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-              `;
+               INSERT INTO longtermhire_content_images
+               (content_id, image_url, image_order, is_main, caption, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
+             `;
 
             await sdk.rawQuery(imageSQL, [
               contentId,
