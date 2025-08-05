@@ -965,8 +965,6 @@ module.exports = function (app) {
           SELECT
             cll.client_id,
             COALESCE(cl.client_name, u.email) as client_name,
-            u.first_name,
-            u.last_name,
             cll.login_time,
             cll.ip_address,
             cll.user_agent
