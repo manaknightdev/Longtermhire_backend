@@ -1165,16 +1165,29 @@ module.exports = function (app) {
 
         // Get online users
         const onlineUsers = await chatService.getOnlineUsers();
+        console.log("🔍 Online users from ChatService:", onlineUsers);
+        console.log(
+          "🔍 Client IDs:",
+          clients.map((c) => c.id)
+        );
 
         // Combine client data with online status
-        const clientsWithStatus = clients.map((client) => ({
-          id: client.id,
-          email: client.email,
-          full_name: client.email, // Use email as display name since no first/last name
-          created_at: client.created_at,
-          is_online: onlineUsers.includes(client.id.toString()),
-          last_seen: null, // Could be enhanced with last activity tracking
-        }));
+        const clientsWithStatus = clients.map((client) => {
+          const clientIdStr = client.id.toString();
+          const isOnline = onlineUsers.includes(clientIdStr);
+          console.log(
+            `🔍 Client ${clientIdStr} (${client.email}) online status: ${isOnline}`
+          );
+
+          return {
+            id: client.id,
+            email: client.email,
+            full_name: client.email, // Use email as display name since no first/last name
+            created_at: client.created_at,
+            is_online: isOnline,
+            last_seen: null, // Could be enhanced with last activity tracking
+          };
+        });
 
         return res.status(200).json({
           error: false,
@@ -1234,9 +1247,15 @@ module.exports = function (app) {
 
         // Get online users
         const onlineUsers = await chatService.getOnlineUsers();
+        console.log("🔍 Online users from ChatService (single):", onlineUsers);
+        console.log("🔍 Client ID:", client.id);
 
         // Check if client is online
-        const isOnline = onlineUsers.includes(client.id.toString());
+        const clientIdStr = client.id.toString();
+        const isOnline = onlineUsers.includes(clientIdStr);
+        console.log(
+          `🔍 Client ${clientIdStr} (${client.email}) online status: ${isOnline}`
+        );
 
         return res.status(200).json({
           error: false,
