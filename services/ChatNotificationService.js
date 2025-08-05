@@ -53,12 +53,20 @@ class ChatNotificationService {
     sdk
   ) {
     try {
+      console.log("📧 ChatNotificationService.sendChatNotification called");
+      console.log("📧 clientUserId:", clientUserId);
+      console.log("📧 adminUserId:", adminUserId);
+      console.log("📧 clientData:", clientData);
+      console.log("📧 adminData:", adminData);
+
       // Check rate limiting
       const canSend = await this.canSendChatNotification(
         clientUserId,
         adminUserId,
         sdk
       );
+      console.log("📧 Rate limiting check result:", canSend);
+
       if (!canSend) {
         console.log(
           `⏰ Chat notification rate limited for client: ${clientUserId}`
@@ -78,13 +86,13 @@ class ChatNotificationService {
                 <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
                      alt="Longterm Hire Logo" 
                      style="width: 240px; height: 135px; margin-bottom: 15px;">
-                <h1 style="color: #E5E5E5; margin: 0; font-size: 24px; font-weight: 400;">New Message Available</h1>
+                <h1 style="color: #E5E5E5; margin: 0; font-size: 24px; font-weight: 400;">💬 New Message Available</h1>
                 <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 16px;">You have a new message from our team</p>
               </div>
 
               <!-- Message Content -->
               <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
-                <h3 style="color: #E5E5E5; margin-top: 0; font-size: 18px; font-weight: 400;">💬 Hello ${
+                <h3 style="color: #E5E5E5; margin-top: 0; font-size: 18px; font-weight: 400;">Hello ${
                   clientData.client_name || "there"
                 }!</h3>
                 <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
@@ -101,17 +109,14 @@ class ChatNotificationService {
 
               <!-- Login Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${
-                  process.env.FRONTEND_URL ||
-                  "https://longtermhire.manaknightdigital.com/client/login"
-                }" 
+                <a href="https://longtermhire.manaknightdigital.com/client/login" 
                    style="background: #FDCE06; color: #1F1F20; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; border: 1px solid #FDCE06;">
                   🔗 Login to View Message
                 </a>
               </div>
 
               <!-- Notice -->
-              <div style="background: #1C1C1C; padding: 20px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
+              <div style="background: #1C1C1C; padding: 20px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444; border-left: 4px solid #FDCE06;">
                 <h4 style="color: #FDCE06; margin-top: 0; font-size: 16px; font-weight: 400;">ℹ️ Notification Policy</h4>
                 <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 14px; line-height: 1.5;">
                   To avoid spam, you will only receive one notification per 24 hours. 
@@ -131,7 +136,9 @@ class ChatNotificationService {
         `,
       };
 
-      await this.mailService.send(emailData);
+      console.log("📧 About to send email with data:", emailData);
+      const emailResult = await this.mailService.send(emailData);
+      console.log("📧 Email service result:", emailResult);
 
       // Update notification record
       const existingRecord = await sdk.findOne("chat_notifications", {
@@ -145,6 +152,7 @@ class ChatNotificationService {
           last_notification_sent: new Date().toISOString(),
           notification_count_24h: existingRecord.notification_count_24h + 1,
         });
+        console.log("📧 Updated existing notification record");
       } else {
         await sdk.create("chat_notifications", {
           client_user_id: clientUserId,
@@ -152,6 +160,7 @@ class ChatNotificationService {
           last_notification_sent: new Date().toISOString(),
           notification_count_24h: 1,
         });
+        console.log("📧 Created new notification record");
       }
 
       console.log(`📧 Chat notification sent to client: ${clientData.email}`);

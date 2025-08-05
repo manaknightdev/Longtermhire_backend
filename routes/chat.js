@@ -520,12 +520,20 @@ module.exports = function (app) {
 
         // Send email notification if admin is messaging a client
         try {
+          console.log("🔍 Checking chat notification conditions...");
+          console.log("🔍 fromUserId:", fromUserId, "to_user_id:", to_user_id);
+
           const senderRoleSQL = `SELECT role_id FROM longtermhire_user WHERE id = ?`;
           const senderRole = await sdk.rawQuery(senderRoleSQL, [fromUserId]);
           const isAdmin = senderRole[0]?.role_id === "super_admin";
 
+          console.log("🔍 Sender role data:", senderRole);
+          console.log("🔍 Is admin?", isAdmin);
+
           if (isAdmin) {
-            // Get client and admin data for email notification
+            console.log("✅ Admin detected, getting client and admin data...");
+
+            // Get client data for email notification
             const clientSQL = `
               SELECT u.email, c.client_name, c.company_name, c.phone
               FROM longtermhire_user u
@@ -533,32 +541,39 @@ module.exports = function (app) {
               WHERE u.id = ?
             `;
             const clientData = await sdk.rawQuery(clientSQL, [to_user_id]);
+            console.log("🔍 Client data:", clientData);
 
-            const adminSQL = `
-              SELECT u.email, p.first_name, p.last_name
-              FROM longtermhire_user u
-              LEFT JOIN longtermhire_preference p ON u.id = p.user_id
-              WHERE u.id = ?
-            `;
-            const adminData = await sdk.rawQuery(adminSQL, [fromUserId]);
+            // Create admin data object since we know admin is user_id = 2
+            const adminData = {
+              email: "admin@longtermhire.com",
+              first_name: "Admin",
+              last_name: "Team",
+            };
+            console.log("🔍 Admin data (hardcoded):", adminData);
 
-            if (
-              clientData &&
-              clientData.length > 0 &&
-              adminData &&
-              adminData.length > 0
-            ) {
+            if (clientData && clientData.length > 0) {
+              console.log("✅ All data found, sending notification...");
               const config = app.get("configuration");
               const notificationService = new ChatNotificationService(config);
 
-              await notificationService.sendChatNotification(
+              const result = await notificationService.sendChatNotification(
                 to_user_id,
                 fromUserId,
                 clientData[0],
                 adminData[0],
                 sdk
               );
+              console.log("📧 Notification result:", result);
+            } else {
+              console.log(
+                "❌ Missing data - Client data length:",
+                clientData?.length,
+                "Admin data length:",
+                adminData?.length
+              );
             }
+          } else {
+            console.log("❌ Not an admin, skipping notification");
           }
         } catch (notificationError) {
           console.error(

@@ -62,43 +62,49 @@ module.exports = function (app) {
 
       // Create HTML email template for OTP
       const htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
-          <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #333; margin: 0; font-size: 28px;">🔐 Password Reset Request</h1>
-              <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">Equipment Hire Platform</p>
+        <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
+          <div style="background-color: #1F1F20; padding: 30px; border-radius: 8px; border: 2px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            
+            <!-- Header with Logo -->
+            <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
+              <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
+                   alt="Longterm Hire Logo" 
+                   style="width: 240px; height: 135px; margin-bottom: 15px;">
+              <h1 style="color: #E5E5E5; margin: 0; font-size: 28px; font-weight: 400;">🔐 Password Reset Request</h1>
+              <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 16px;">Longterm Hire Platform</p>
             </div>
             
-            <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #FDCE06;">
-              <h3 style="color: #333; margin-top: 0; font-size: 20px;">Hello!</h3>
-              <p style="color: #555; line-height: 1.6; margin: 15px 0;">
-                We received a request to reset your password for your Equipment Hire Platform account.
+            <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444; border-left: 4px solid #FDCE06;">
+              <h3 style="color: #E5E5E5; margin-top: 0; font-size: 20px; font-weight: 400;">Hello!</h3>
+              <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
+                We received a request to reset your password for your <strong>Longterm Hire</strong> account.
                 Use the verification code below to proceed with resetting your password.
               </p>
             </div>
 
-            <div style="background: #e8f4fd; padding: 30px; border-radius: 8px; margin: 25px 0; text-align: center;">
-              <h3 style="color: #333; margin-top: 0; font-size: 18px;">🔢 Your Verification Code</h3>
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 15px 0;">
-                <span style="font-size: 32px; font-weight: bold; color: #333; letter-spacing: 8px; font-family: monospace;">${otp}</span>
+            <div style="background: #292A2B; padding: 30px; border-radius: 6px; margin: 25px 0; text-align: center; border: 1px solid #444444;">
+              <h3 style="color: #E5E5E5; margin-top: 0; font-size: 18px; font-weight: 400;">🔢 Your Verification Code</h3>
+              <div style="background: #1C1C1C; padding: 20px; border-radius: 6px; margin: 15px 0; border: 1px solid #444444;">
+                <span style="font-size: 32px; font-weight: bold; color: #FDCE06; letter-spacing: 8px; font-family: monospace;">${otp}</span>
               </div>
-              <p style="color: #666; font-size: 14px; margin: 10px 0 0 0;">
-                This code will expire in <strong>10 minutes</strong>
+              <p style="color: #ADAEBC; font-size: 14px; margin: 10px 0 0 0;">
+                This code will expire in <strong style="color: #FDCE06;">10 minutes</strong>
               </p>
             </div>
 
-            <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #ffeaa7;">
-              <h4 style="color: #856404; margin-top: 0; font-size: 16px;">🔒 Security Notice</h4>
-              <p style="color: #856404; margin: 10px 0 0 0; font-size: 14px; line-height: 1.5;">
+            <div style="background: #1C1C1C; padding: 20px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444; border-left: 4px solid #FDCE06;">
+              <h4 style="color: #FDCE06; margin-top: 0; font-size: 16px; font-weight: 400;">🔒 Security Notice</h4>
+              <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 14px; line-height: 1.5;">
                 If you didn't request this password reset, please ignore this email. 
                 Your password will remain unchanged. For security, this code will expire in 10 minutes.
               </p>
             </div>
 
-            <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; text-align: center;">
-              <p style="color: #666; font-size: 14px; margin: 0;">
+            <!-- Footer -->
+            <div style="border-top: 1px solid #333333; padding-top: 20px; margin-top: 30px; text-align: center;">
+              <p style="color: #ADAEBC; font-size: 14px; margin: 0;">
                 Need help? Contact our support team.<br>
-                <small>This email was sent on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</small>
+                <small style="color: #666666;">This email was sent on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</small>
               </p>
             </div>
           </div>
