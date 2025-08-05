@@ -1165,7 +1165,9 @@ module.exports = function (app) {
 
         // Get online users
         const onlineUsers = await chatService.getOnlineUsers();
+        const onlineUsersStr = onlineUsers.map((id) => id.toString());
         console.log("🔍 Online users from ChatService:", onlineUsers);
+        console.log("🔍 Online users (strings):", onlineUsersStr);
         console.log(
           "🔍 Client IDs:",
           clients.map((c) => c.id)
@@ -1174,7 +1176,7 @@ module.exports = function (app) {
         // Combine client data with online status
         const clientsWithStatus = clients.map((client) => {
           const clientIdStr = client.id.toString();
-          const isOnline = onlineUsers.includes(clientIdStr);
+          const isOnline = onlineUsersStr.includes(clientIdStr);
           console.log(
             `🔍 Client ${clientIdStr} (${client.email}) online status: ${isOnline}`
           );
@@ -1247,12 +1249,14 @@ module.exports = function (app) {
 
         // Get online users
         const onlineUsers = await chatService.getOnlineUsers();
+        const onlineUsersStr = onlineUsers.map((id) => id.toString());
         console.log("🔍 Online users from ChatService (single):", onlineUsers);
+        console.log("🔍 Online users (strings):", onlineUsersStr);
         console.log("🔍 Client ID:", client.id);
 
         // Check if client is online
         const clientIdStr = client.id.toString();
-        const isOnline = onlineUsers.includes(clientIdStr);
+        const isOnline = onlineUsersStr.includes(clientIdStr);
         console.log(
           `🔍 Client ${clientIdStr} (${client.email}) online status: ${isOnline}`
         );
