@@ -1155,12 +1155,10 @@ module.exports = function (app) {
           SELECT 
             u.id,
             u.email,
-            u.first_name,
-            u.last_name,
             u.created_at
           FROM longtermhire_user u
           WHERE u.role_id = 'member'
-          ORDER BY u.first_name, u.last_name
+          ORDER BY u.email
         `;
 
         const clients = await sdk.rawQuery(clientsQuery);
@@ -1172,11 +1170,7 @@ module.exports = function (app) {
         const clientsWithStatus = clients.map((client) => ({
           id: client.id,
           email: client.email,
-          first_name: client.first_name,
-          last_name: client.last_name,
-          full_name: `${client.first_name || ""} ${
-            client.last_name || ""
-          }`.trim(),
+          full_name: client.email, // Use email as display name since no first/last name
           created_at: client.created_at,
           is_online: onlineUsers.includes(client.id.toString()),
           last_seen: null, // Could be enhanced with last activity tracking
@@ -1222,8 +1216,6 @@ module.exports = function (app) {
           SELECT 
             u.id,
             u.email,
-            u.first_name,
-            u.last_name,
             u.created_at
           FROM longtermhire_user u
           WHERE u.id = ? AND u.role_id = 'member'
@@ -1251,11 +1243,7 @@ module.exports = function (app) {
           data: {
             id: client.id,
             email: client.email,
-            first_name: client.first_name,
-            last_name: client.last_name,
-            full_name: `${client.first_name || ""} ${
-              client.last_name || ""
-            }`.trim(),
+            full_name: client.email, // Use email as display name since no first/last name
             created_at: client.created_at,
             is_online: isOnline,
             last_seen: null, // Could be enhanced with last activity tracking

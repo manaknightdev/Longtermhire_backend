@@ -50,11 +50,30 @@ module.exports = function (app) {
             ? `WHERE ${searchConditions.join(" AND ")}`
             : "";
 
-        // Get equipment with pagination
+        // Get equipment with pagination and content details
         const equipmentQuery = `
-        SELECT * FROM longtermhire_equipment_item
+        SELECT 
+          e.*,
+          c.description,
+          c.banner_description,
+          c.image_url as content_image,
+          CASE WHEN ci.id IS NOT NULL THEN 
+            GROUP_CONCAT(
+              JSON_OBJECT(
+                'id', ci.id,
+                'image_url', ci.image_url,
+                'image_order', ci.image_order,
+                'is_main', ci.is_main,
+                'caption', ci.caption
+              ) SEPARATOR '|||'
+            )
+          ELSE NULL END as images
+        FROM longtermhire_equipment_item e
+        LEFT JOIN longtermhire_content c ON e.id = c.equipment_id
+        LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
         ${whereClause}
-        ORDER BY id DESC
+        GROUP BY e.id
+        ORDER BY e.id DESC
         LIMIT ? OFFSET ?
       `;
 
@@ -73,9 +92,42 @@ module.exports = function (app) {
         const countResult = await sdk.rawQuery(countQuery, searchParams);
         const total = countResult[0]?.total || 0;
 
+        // Process equipment data to parse images array
+        const processedEquipment = equipment.map((item) => {
+          const processedItem = { ...item };
+
+          // Parse images array if it exists
+          if (item.images) {
+            try {
+              const imageStrings = item.images.split("|||");
+              const parsedImages = imageStrings
+                .map((imgStr) => {
+                  try {
+                    return JSON.parse(imgStr.trim());
+                  } catch (e) {
+                    return null;
+                  }
+                })
+                .filter(
+                  (img) =>
+                    img !== null && img.id !== null && img.image_url !== null
+                );
+
+              processedItem.images = parsedImages;
+            } catch (e) {
+              console.error("Error parsing images for equipment:", item.id, e);
+              processedItem.images = [];
+            }
+          } else {
+            processedItem.images = [];
+          }
+
+          return processedItem;
+        });
+
         return res.status(200).json({
           error: false,
-          data: equipment,
+          data: processedEquipment,
           pagination: {
             page,
             limit,
