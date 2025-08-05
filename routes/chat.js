@@ -960,21 +960,43 @@ module.exports = function (app) {
           LIMIT 10
         `;
 
+        // Get recent client logins (last 7 days)
+        const recentLoginsSQL = `
+          SELECT
+            cll.client_id,
+            COALESCE(cl.client_name, u.email) as client_name,
+            u.first_name,
+            u.last_name,
+            cll.login_time,
+            cll.ip_address,
+            cll.user_agent
+          FROM longtermhire_client_login_logs cll
+          LEFT JOIN longtermhire_user u ON cll.client_id = u.id
+          LEFT JOIN longtermhire_client cl ON u.id = cl.user_id
+          WHERE cll.login_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+          ORDER BY cll.login_time DESC
+          LIMIT 10
+        `;
+
         // Get statistics counts
         const statsSQL = `
           SELECT
             (SELECT COUNT(*) FROM longtermhire_user WHERE role_id = 'member') as total_clients,
             (SELECT COUNT(*) FROM longtermhire_equipment_item) as total_equipment,
             (SELECT COUNT(*) FROM longtermhire_chat_messages WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND read_at IS NULL) as recent_messages,
-            (SELECT COUNT(*) FROM longtermhire_equipment_requests WHERE status = 'pending') as pending_requests
+            (SELECT COUNT(*) FROM longtermhire_equipment_requests WHERE status = 'pending') as pending_requests,
+            (SELECT COUNT(*) FROM longtermhire_client_login_logs WHERE login_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as logins_today,
+            (SELECT COUNT(*) FROM longtermhire_client_login_logs WHERE login_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)) as logins_this_week
         `;
 
         // Execute all queries
-        const [recentRequests, recentChat, stats] = await Promise.all([
-          sdk.rawQuery(recentRequestsSQL),
-          sdk.rawQuery(recentChatSQL),
-          sdk.rawQuery(statsSQL),
-        ]);
+        const [recentRequests, recentChat, recentLogins, stats] =
+          await Promise.all([
+            sdk.rawQuery(recentRequestsSQL),
+            sdk.rawQuery(recentChatSQL),
+            sdk.rawQuery(recentLoginsSQL),
+            sdk.rawQuery(statsSQL),
+          ]);
 
         return res.status(200).json({
           error: false,
@@ -982,6 +1004,7 @@ module.exports = function (app) {
             stats: stats[0] || {},
             recent_requests: recentRequests || [],
             recent_chat_activity: recentChat || [],
+            recent_client_logins: recentLogins || [],
           },
         });
       } catch (error) {
@@ -1004,19 +1027,63 @@ module.exports = function (app) {
         const sdk = app.get("sdk");
         sdk.setProjectId("longtermhire");
 
-        // Clear various activity logs
+        console.log("🧹 Clearing activity logs...");
+
+        // Clear various activity logs with safer queries
         const clearQueries = [
-          "DELETE FROM longtermhire_client_login_logs WHERE login_time < DATE_SUB(NOW(), INTERVAL 1 DAY)",
-          "DELETE FROM longtermhire_chat_activity_logs WHERE activity_time < DATE_SUB(NOW(), INTERVAL 1 DAY)",
-          "DELETE FROM longtermhire_equipment_requests WHERE status = 'completed' AND request_date < DATE_SUB(NOW(), INTERVAL 7 DAY)",
+          // Clear old chat notifications (older than 24 hours)
+          "DELETE FROM longtermhire_chat_notifications WHERE last_notification_sent < DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+
+          // Clear old chat messages (older than 30 days) - keep recent ones
+          "DELETE FROM longtermhire_chat_messages WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)",
+
+          // Clear old equipment requests (completed and older than 7 days)
+          "DELETE FROM longtermhire_equipment_requests WHERE status = 'completed' AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)",
+
+          // Clear old content images (orphaned images older than 30 days)
+          "DELETE ci FROM longtermhire_content_images ci LEFT JOIN longtermhire_content c ON ci.content_id = c.id WHERE c.id IS NULL AND ci.created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)",
         ];
 
-        // Execute all clear queries
-        await Promise.all(clearQueries.map((query) => sdk.rawQuery(query)));
+        // Execute queries one by one with error handling
+        const results = [];
+        for (const query of clearQueries) {
+          try {
+            console.log(`Executing: ${query}`);
+            const result = await sdk.rawQuery(query);
+            results.push({
+              query,
+              success: true,
+              affectedRows: result.affectedRows || 0,
+            });
+            console.log(
+              `✅ Query executed successfully, affected rows: ${
+                result.affectedRows || 0
+              }`
+            );
+          } catch (queryError) {
+            console.warn(`⚠️ Query failed: ${query}`, queryError.message);
+            results.push({ query, success: false, error: queryError.message });
+          }
+        }
+
+        const successfulQueries = results.filter((r) => r.success).length;
+        const totalAffectedRows = results
+          .filter((r) => r.success)
+          .reduce((sum, r) => sum + (r.affectedRows || 0), 0);
+
+        console.log(
+          `🧹 Clear logs completed: ${successfulQueries}/${clearQueries.length} queries successful, ${totalAffectedRows} rows affected`
+        );
 
         return res.status(200).json({
           error: false,
           message: "Activity logs cleared successfully",
+          data: {
+            successful_queries: successfulQueries,
+            total_queries: clearQueries.length,
+            affected_rows: totalAffectedRows,
+            results: results,
+          },
         });
       } catch (error) {
         console.error("Clear logs error:", error);
@@ -1067,6 +1134,138 @@ module.exports = function (app) {
         });
       } catch (error) {
         console.error("Mark messages as read error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
+
+  // Get client online status (Admin only)
+  app.get(
+    "/v1/api/longtermhire/chat/client-status",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        // Get all clients
+        const clientsQuery = `
+          SELECT 
+            u.id,
+            u.email,
+            u.first_name,
+            u.last_name,
+            u.created_at
+          FROM longtermhire_user u
+          WHERE u.role_id = 'member'
+          ORDER BY u.first_name, u.last_name
+        `;
+
+        const clients = await sdk.rawQuery(clientsQuery);
+
+        // Get online users
+        const onlineUsers = await chatService.getOnlineUsers();
+
+        // Combine client data with online status
+        const clientsWithStatus = clients.map((client) => ({
+          id: client.id,
+          email: client.email,
+          first_name: client.first_name,
+          last_name: client.last_name,
+          full_name: `${client.first_name || ""} ${
+            client.last_name || ""
+          }`.trim(),
+          created_at: client.created_at,
+          is_online: onlineUsers.includes(client.id.toString()),
+          last_seen: null, // Could be enhanced with last activity tracking
+        }));
+
+        return res.status(200).json({
+          error: false,
+          data: {
+            clients: clientsWithStatus,
+            total_clients: clientsWithStatus.length,
+            online_clients: clientsWithStatus.filter(
+              (client) => client.is_online
+            ).length,
+            offline_clients: clientsWithStatus.filter(
+              (client) => !client.is_online
+            ).length,
+          },
+          message: "Client status retrieved successfully",
+        });
+      } catch (error) {
+        console.error("Get client status error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
+
+  // Get specific client online status
+  app.get(
+    "/v1/api/longtermhire/chat/client-status/:clientId",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const { clientId } = req.params;
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        // Get specific client
+        const clientQuery = `
+          SELECT 
+            u.id,
+            u.email,
+            u.first_name,
+            u.last_name,
+            u.created_at
+          FROM longtermhire_user u
+          WHERE u.id = ? AND u.role_id = 'member'
+        `;
+
+        const clients = await sdk.rawQuery(clientQuery, [clientId]);
+
+        if (!clients || clients.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Client not found",
+          });
+        }
+
+        const client = clients[0];
+
+        // Get online users
+        const onlineUsers = await chatService.getOnlineUsers();
+
+        // Check if client is online
+        const isOnline = onlineUsers.includes(client.id.toString());
+
+        return res.status(200).json({
+          error: false,
+          data: {
+            id: client.id,
+            email: client.email,
+            first_name: client.first_name,
+            last_name: client.last_name,
+            full_name: `${client.first_name || ""} ${
+              client.last_name || ""
+            }`.trim(),
+            created_at: client.created_at,
+            is_online: isOnline,
+            last_seen: null, // Could be enhanced with last activity tracking
+          },
+          message: "Client status retrieved successfully",
+        });
+      } catch (error) {
+        console.error("Get client status error:", error);
         return res.status(500).json({
           error: true,
           message: error.message || "Internal server error",

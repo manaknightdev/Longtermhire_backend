@@ -366,7 +366,7 @@ module.exports = function (app) {
             ? `WHERE ${searchConditions.join(" AND ")}`
             : "";
 
-        // Get clients with user email and pricing information
+        // Get clients with user email, pricing information, and custom discount flag
         const clientsQuery = `
         SELECT
           c.id,
@@ -378,11 +378,18 @@ module.exports = function (app) {
           c.updated_at,
           u.email,
           cp.pricing_package_id,
-          pp.name as pricing_package_name
+          pp.name as pricing_package_name,
+          CASE WHEN custom_discounts.client_user_id IS NOT NULL THEN 1 ELSE 0 END as has_custom_discounts
         FROM longtermhire_client c
         LEFT JOIN longtermhire_user u ON c.user_id = u.id
         LEFT JOIN longtermhire_client_pricing cp ON c.user_id = cp.client_user_id
         LEFT JOIN longtermhire_pricing_package pp ON cp.pricing_package_id = pp.id
+        LEFT JOIN (
+          SELECT DISTINCT client_user_id
+          FROM longtermhire_client_equipment
+          WHERE custom_discount_type IS NOT NULL 
+          AND custom_discount_value IS NOT NULL
+        ) custom_discounts ON c.user_id = custom_discounts.client_user_id
         ${whereClause}
         ORDER BY c.id DESC
         LIMIT ? OFFSET ?
