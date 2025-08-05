@@ -41,6 +41,10 @@ class ChatService {
       this.subscriber.on("message", (channel, message) => {
         this.handleIncomingMessage(channel, message);
       });
+
+      // Start the cleanup interval for stale online statuses
+      this.startCleanupInterval();
+      console.log("🔄 Started cleanup interval (every 5 minutes)");
     } catch (error) {
       console.error("❌ Redis Chat Service connection failed:", error);
       this.isConnected = false;
@@ -49,26 +53,53 @@ class ChatService {
 
   // Start cleanup interval for stale online statuses
   startCleanupInterval() {
-    // Clean up stale online statuses every 5 minutes
-    setInterval(() => {
-      this.cleanupStaleOnlineStatus();
-    }, 300000); // 5 minutes
+    console.log("🔄 Setting up cleanup interval (every 30 seconds)");
+    // Clean up stale online statuses every 30 seconds
+    setInterval(async () => {
+      console.log("🧹 Running cleanup interval...");
+      try {
+        await this.cleanupStaleOnlineStatus();
+      } catch (error) {
+        console.error("❌ Error in cleanup interval:", error);
+      }
+    }, 60000); // 5 minutes
   }
 
   // Clean up stale online statuses
   async cleanupStaleOnlineStatus() {
-    if (!this.isConnected) return;
+    console.log("🧹 cleanupStaleOnlineStatus() called");
 
     try {
+      console.log("🔍 Getting online users...");
       const onlineUsers = await this.getOnlineUsers();
+      console.log("🔍 Online users found:", onlineUsers);
+
       const now = Date.now();
+      console.log("🔍 Current time:", now);
 
       for (const userId of onlineUsers) {
-        const lastHeartbeat = await this.publisher.get(`heartbeat:${userId}`);
-        if (lastHeartbeat && now - parseInt(lastHeartbeat) > 60000) {
+        console.log(`🔍 Checking user ${userId}...`);
+
+        let lastHeartbeat;
+        if (this.isConnected) {
+          // Try Redis first
+          lastHeartbeat = await this.publisher.get(`heartbeat:${userId}`);
+        } else {
+          // Use memory fallback
+          lastHeartbeat = this.heartbeats.get(userId);
+        }
+
+        console.log(`🔍 User ${userId} last heartbeat:`, lastHeartbeat);
+
+        if (lastHeartbeat && now - parseInt(lastHeartbeat) > 30000) {
           // 1 minute
+          console.log(
+            `⏰ User ${userId} heartbeat is stale, marking offline...`
+          );
           await this.setUserOffline(userId);
           console.log(`🧹 Cleaned up stale online status for user ${userId}`);
+        } else {
+          console.log(`✅ User ${userId} heartbeat is fresh`);
         }
       }
     } catch (error) {

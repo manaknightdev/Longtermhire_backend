@@ -560,16 +560,14 @@ module.exports = function (app) {
                 to_user_id,
                 fromUserId,
                 clientData[0],
-                adminData[0],
+                adminData, // Fixed: adminData is an object, not array
                 sdk
               );
               console.log("📧 Notification result:", result);
             } else {
               console.log(
                 "❌ Missing data - Client data length:",
-                clientData?.length,
-                "Admin data length:",
-                adminData?.length
+                clientData?.length
               );
             }
           } else {
