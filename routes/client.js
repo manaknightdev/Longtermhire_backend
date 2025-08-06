@@ -1,5 +1,4 @@
 const TokenMiddleware = require("../../../baas/middleware/TokenMiddleware");
-const RoleMiddleware = require("../../../baas/middleware/RoleMiddleware");
 const MailService = require("../../../baas/services/MailService");
 const bcrypt = require("bcryptjs");
 
@@ -804,7 +803,6 @@ module.exports = function (app) {
   app.delete(
     "/v1/api/longtermhire/super_admin/remove-pricing/:clientUserId",
     TokenMiddleware(),
-    RoleMiddleware(["super_admin"]),
     async (req, res) => {
       try {
         console.log(

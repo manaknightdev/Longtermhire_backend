@@ -37,7 +37,7 @@ module.exports = function (app) {
           searchParams.push(`%${categoryName}%`);
         }
         if (equipmentId) {
-          searchConditions.push("e.id = ?");
+          searchConditions.push("e.equipment_id = ?");
           searchParams.push(equipmentId);
         }
         if (equipmentName) {

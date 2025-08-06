@@ -26,7 +26,7 @@ module.exports = function (app) {
         let searchParams = [];
 
         if (equipmentId) {
-          searchConditions.push("e.id = ?");
+          searchConditions.push("e.equipment_id = ?");
           searchParams.push(equipmentId);
         }
         if (equipmentName) {
@@ -50,7 +50,7 @@ module.exports = function (app) {
           c.user_id,
           c.created_at,
           c.updated_at,
-          e.id as equipment_id,
+          e.equipment_id,
           e.equipment_name,
           GROUP_CONCAT(
             CASE 
