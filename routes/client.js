@@ -1,4 +1,5 @@
 const TokenMiddleware = require("../../../baas/middleware/TokenMiddleware");
+const RoleMiddleware = require("../../../baas/middleware/RoleMiddleware");
 const MailService = require("../../../baas/services/MailService");
 const bcrypt = require("bcryptjs");
 
@@ -794,6 +795,62 @@ module.exports = function (app) {
         return res.status(500).json({
           error: true,
           message: error.message,
+        });
+      }
+    }
+  );
+
+  // Remove pricing assignment from client
+  app.delete(
+    "/v1/api/longtermhire/super_admin/remove-pricing/:clientUserId",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        console.log(
+          "DELETE /v1/api/longtermhire/super_admin/remove-pricing/:clientUserId called"
+        );
+        console.log("Client user ID:", req.params.clientUserId);
+
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        const { clientUserId } = req.params;
+
+        // Check if client exists
+        const clientExists = await sdk.findOne("client", {
+          user_id: clientUserId,
+        });
+
+        if (!clientExists) {
+          return res.status(404).json({
+            error: true,
+            message: "Client not found",
+          });
+        }
+
+        // Remove pricing assignment
+        const deleteSQL = `DELETE FROM longtermhire_client_pricing WHERE client_user_id = ?`;
+        const result = await sdk.rawQuery(deleteSQL, [clientUserId]);
+
+        console.log(
+          `Removed pricing assignment for client: ${clientUserId}`,
+          result
+        );
+
+        return res.status(200).json({
+          error: false,
+          message: "Pricing assignment removed successfully",
+          data: {
+            client_user_id: clientUserId,
+            removed_at: new Date().toISOString(),
+          },
+        });
+      } catch (error) {
+        console.error("Remove pricing error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
         });
       }
     }

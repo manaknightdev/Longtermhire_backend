@@ -26,11 +26,11 @@ module.exports = function (app) {
         let searchParams = [];
 
         if (equipmentId) {
-          searchConditions.push("equipment_id = ?");
+          searchConditions.push("e.id = ?");
           searchParams.push(equipmentId);
         }
         if (equipmentName) {
-          searchConditions.push("equipment_name LIKE ?");
+          searchConditions.push("e.equipment_name LIKE ?");
           searchParams.push(`%${equipmentName}%`);
         }
 
@@ -42,7 +42,16 @@ module.exports = function (app) {
         // Get content with pagination and images
         const contentQuery = `
         SELECT 
-          c.*,
+          c.id,
+          c.equipment_id as content_equipment_id,
+          c.description,
+          c.banner_description,
+          c.image_url,
+          c.user_id,
+          c.created_at,
+          c.updated_at,
+          e.id as equipment_id,
+          e.equipment_name,
           GROUP_CONCAT(
             CASE 
               WHEN ci.id IS NOT NULL THEN
@@ -57,9 +66,10 @@ module.exports = function (app) {
             END ORDER BY ci.image_order ASC SEPARATOR '|||'
           ) as images
         FROM longtermhire_content c
+        LEFT JOIN longtermhire_equipment_item e ON c.equipment_id = e.id
         LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
         ${whereClause}
-        GROUP BY c.id
+        GROUP BY c.id, e.id
         ORDER BY c.id DESC
         LIMIT ? OFFSET ?
       `;
@@ -67,7 +77,8 @@ module.exports = function (app) {
         // Get total count for pagination
         const countQuery = `
         SELECT COUNT(*) as total
-        FROM longtermhire_content
+        FROM longtermhire_content c
+        LEFT JOIN longtermhire_equipment_item e ON c.equipment_id = e.id
         ${whereClause}
       `;
 

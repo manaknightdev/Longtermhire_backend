@@ -37,11 +37,11 @@ module.exports = function (app) {
           searchParams.push(`%${categoryName}%`);
         }
         if (equipmentId) {
-          searchConditions.push("equipment_id = ?");
+          searchConditions.push("e.id = ?");
           searchParams.push(equipmentId);
         }
         if (equipmentName) {
-          searchConditions.push("equipment_name LIKE ?");
+          searchConditions.push("e.equipment_name LIKE ?");
           searchParams.push(`%${equipmentName}%`);
         }
 
@@ -80,7 +80,7 @@ module.exports = function (app) {
         // Get total count for pagination
         const countQuery = `
         SELECT COUNT(*) as total
-        FROM longtermhire_equipment_item
+        FROM longtermhire_equipment_item e
         ${whereClause}
       `;
 

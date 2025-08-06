@@ -1040,19 +1040,16 @@ module.exports = function (app) {
 
         console.log("🧹 Clearing activity logs...");
 
-        // Clear various activity logs with safer queries
+        // Clear only activity logs and statistics, NOT actual data
         const clearQueries = [
-          // Clear old chat notifications (older than 24 hours)
-          "DELETE FROM longtermhire_chat_notifications WHERE last_notification_sent < DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+          // Clear chat activity logs (statistics only)
+          "DELETE FROM longtermhire_chat_activity_logs",
 
-          // Clear old chat messages (older than 30 days) - keep recent ones
-          "DELETE FROM longtermhire_chat_messages WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)",
+          // Clear client login logs (statistics only)
+          "DELETE FROM longtermhire_client_login_logs",
 
-          // Clear old equipment requests (completed and older than 7 days)
-          "DELETE FROM longtermhire_equipment_requests WHERE status = 'completed' AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)",
-
-          // Clear old content images (orphaned images older than 30 days)
-          "DELETE ci FROM longtermhire_content_images ci LEFT JOIN longtermhire_content c ON ci.content_id = c.id WHERE c.id IS NULL AND ci.created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)",
+          // Clear equipment requests (these are just requests, not actual data)
+          "DELETE FROM longtermhire_equipment_requests",
         ];
 
         // Execute queries one by one with error handling
