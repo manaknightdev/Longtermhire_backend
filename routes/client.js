@@ -173,13 +173,13 @@ module.exports = function (app) {
           console.log("💰 Assigning pricing to client:", pricing);
           try {
             const pricingAssignSQL = `
-              INSERT INTO longtermhire_client_pricing (client_user_id, pricing_package_id, created_at, updated_at)
+              INSERT INTO longtermhire_client_pricing (client_user_id, pricing_package_id, assigned_by, created_at)
               VALUES (?, ?, ?, ?)
             `;
             await sdk.rawQuery(pricingAssignSQL, [
               userId,
               pricing,
-              currentTime,
+              req.user_id, // Use the current admin user ID
               currentTime,
             ]);
             console.log("✅ Pricing assignment completed");
