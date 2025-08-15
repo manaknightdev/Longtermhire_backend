@@ -750,4 +750,172 @@ module.exports = function (app) {
       }
     }
   );
+
+  // Set image as main
+  app.put(
+    "/v1/api/longtermhire/super_admin/content/:contentId/images/:imageId/main",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const { contentId, imageId } = req.params;
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        console.log(`🔄 Setting image ${imageId} as main for content ${contentId}`);
+
+        // 1. Verify content exists
+        const contentCheckSQL =
+          "SELECT id FROM longtermhire_content WHERE id = ?";
+        const contentExists = await sdk.rawQuery(contentCheckSQL, [contentId]);
+
+        if (!contentExists || contentExists.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Content not found",
+          });
+        }
+
+        // 2. Verify image exists and belongs to this content
+        const imageCheckSQL = `
+          SELECT id, is_main 
+          FROM longtermhire_content_images 
+          WHERE id = ? AND content_id = ?
+        `;
+        const imageExists = await sdk.rawQuery(imageCheckSQL, [
+          imageId,
+          contentId,
+        ]);
+
+        if (!imageExists || imageExists.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Image not found or does not belong to this content",
+          });
+        }
+
+        // 3. Unset all other main images for this content
+        const unsetMainSQL = `
+          UPDATE longtermhire_content_images 
+          SET is_main = FALSE 
+          WHERE content_id = ?
+        `;
+        await sdk.rawQuery(unsetMainSQL, [contentId]);
+
+        // 4. Set the specified image as main
+        const setMainSQL = `
+          UPDATE longtermhire_content_images 
+          SET is_main = TRUE 
+          WHERE id = ?
+        `;
+        await sdk.rawQuery(setMainSQL, [imageId]);
+
+        console.log(`✅ Image ${imageId} set as main successfully`);
+
+        return res.status(200).json({
+          error: false,
+          message: "Image set as main successfully",
+          data: {
+            image_id: imageId,
+            content_id: contentId,
+            is_main: true,
+          },
+        });
+      } catch (error) {
+        console.error("Set main image error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
+
+  // Reorder images
+  app.put(
+    "/v1/api/longtermhire/super_admin/content/:contentId/images/reorder",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const { contentId } = req.params;
+        const { imageOrder } = req.body;
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        console.log(`🔄 Reordering images for content ${contentId}:`, imageOrder);
+
+        if (!imageOrder || !Array.isArray(imageOrder)) {
+          return res.status(400).json({
+            error: true,
+            message: "imageOrder array is required",
+          });
+        }
+
+        // 1. Verify content exists
+        const contentCheckSQL =
+          "SELECT id FROM longtermhire_content WHERE id = ?";
+        const contentExists = await sdk.rawQuery(contentCheckSQL, [contentId]);
+
+        if (!contentExists || contentExists.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Content not found",
+          });
+        }
+
+        // 2. Verify all images exist and belong to this content
+        const imageCheckSQL = `
+          SELECT id 
+          FROM longtermhire_content_images 
+          WHERE id IN (${imageOrder.map(() => "?").join(",")}) 
+          AND content_id = ?
+        `;
+        const imageExists = await sdk.rawQuery(imageCheckSQL, [
+          ...imageOrder,
+          contentId,
+        ]);
+
+        if (imageExists.length !== imageOrder.length) {
+          return res.status(400).json({
+            error: true,
+            message: "One or more images not found or do not belong to this content",
+          });
+        }
+
+        // 3. Update image order for each image
+        const currentTime = new Date()
+          .toISOString()
+          .slice(0, 19)
+          .replace("T", " ");
+
+        for (let i = 0; i < imageOrder.length; i++) {
+          const imageId = imageOrder[i];
+          const updateOrderSQL = `
+            UPDATE longtermhire_content_images 
+            SET image_order = ?, updated_at = ? 
+            WHERE id = ?
+          `;
+          await sdk.rawQuery(updateOrderSQL, [i, currentTime, imageId]);
+        }
+
+        console.log(`✅ Images reordered successfully for content ${contentId}`);
+
+        return res.status(200).json({
+          error: false,
+          message: "Images reordered successfully",
+          data: {
+            content_id: contentId,
+            image_order: imageOrder,
+          },
+        });
+      } catch (error) {
+        console.error("Reorder images error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
 };
