@@ -67,7 +67,7 @@ module.exports = function (app) {
             
             <!-- Header with Logo -->
             <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
-              <img src="https://longtermhire.com/login-logo.png" 
+              <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
                    alt="Longterm Hire Logo" 
                    style="width: 240px; height: 135px; margin-bottom: 15px;">
               <h1 style="color: #E5E5E5; margin: 0; font-size: 28px; font-weight: 400;">🔐 Password Reset Request</h1>
