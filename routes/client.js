@@ -193,7 +193,7 @@ module.exports = function (app) {
         console.log("📧 Sending invitation email to:", email);
 
         try {
-          const loginUrl = "https://longtermhire.com/client/login";
+          const loginUrl = "https://www.longtermhire.com/client/login";
 
           // Create HTML email template
           const htmlContent = `
@@ -249,7 +249,7 @@ module.exports = function (app) {
                 <!-- Footer -->
                 <div style="border-top: 1px solid #333333; padding-top: 20px; margin-top: 30px; text-align: center;">
                   <p style="color: #ADAEBC; font-size: 14px; margin: 0;">
-                    Need assistance? Contact our support team <b>support@longtermhire.com</b>.<br>
+                    Need assistance? Contact our support team <b>admin@longtermhire.com</b>.<br>
                     <small style="color: #666666;">Invitation sent on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</small>
                   </p>
                 </div>
@@ -298,7 +298,7 @@ module.exports = function (app) {
               email: email,
               email_sent: false,
               email_error: emailError.message,
-              login_url: "https://longtermhire.com/client/login",
+              login_url: "https://www.longtermhire.com/client/login",
               equipment_assigned:
                 equipment && Array.isArray(equipment) ? equipment.length : 0,
               pricing_assigned: pricing ? true : false,
