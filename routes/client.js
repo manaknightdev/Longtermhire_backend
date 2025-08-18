@@ -193,8 +193,7 @@ module.exports = function (app) {
         console.log("📧 Sending invitation email to:", email);
 
         try {
-          const loginUrl =
-            "https://longtermhire.manaknightdigital.com/client/login";
+          const loginUrl = "https://longtermhire.com/client/login";
 
           // Create HTML email template
           const htmlContent = `
@@ -299,8 +298,7 @@ module.exports = function (app) {
               email: email,
               email_sent: false,
               email_error: emailError.message,
-              login_url:
-                "https://longtermhire.manaknightdigital.com/client/login",
+              login_url: "https://longtermhire.com/client/login",
               equipment_assigned:
                 equipment && Array.isArray(equipment) ? equipment.length : 0,
               pricing_assigned: pricing ? true : false,
