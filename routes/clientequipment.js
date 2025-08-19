@@ -1,5 +1,6 @@
 const TokenMiddleware = require("../../../baas/middleware/TokenMiddleware");
 const RoleMiddleware = require("../middleware/RoleMiddleware");
+const MailService = require("../../../baas/services/MailService");
 
 module.exports = function (app) {
   // Get client's assigned equipment with pricing and discounts
@@ -394,6 +395,55 @@ module.exports = function (app) {
         });
 
         console.log("✅ Equipment request created:", request.id);
+
+        // Attempt to notify admin via email
+        try {
+          const config = app.get("configuration");
+          const mailService = new MailService(config);
+
+          const to = "admin@longtermhire.com";
+          const from =
+            (config.mail && config.mail.from_mail) ||
+            "noreply@equipmenthire.com";
+
+          const htmlContent = `
+            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
+              <div style="background-color: #1F1F20; padding: 24px; border-radius: 8px; border: 2px solid #E5E7EB;">
+                <h2 style="color: #E5E5E5; margin: 0; font-weight: 500;">📝 New Equipment Request</h2>
+                <p style="color: #ADAEBC; margin: 12px 0 0 0;">A client submitted a new equipment request.</p>
+                <div style="background: #292A2B; padding: 16px; border-radius: 6px; margin: 16px 0; border: 1px solid #444444;">
+                  <p style="color: #E5E5E5; margin: 0;">
+                    <strong style="color:#FDCE06;">Request ID:</strong> ${
+                      request.id || "(pending id)"
+                    }<br/>
+                    <strong style="color:#FDCE06;">Client User ID:</strong> ${
+                      req.user_id
+                    }<br/>
+                    <strong style="color:#FDCE06;">Equipment ID:</strong> ${equipment_id}<br/>
+                    <strong style="color:#FDCE06;">Equipment Name:</strong> ${
+                      equipment.equipment_name || "N/A"
+                    }<br/>
+                    <strong style="color:#FDCE06;">Message:</strong> ${
+                      message || ""
+                    }
+                  </p>
+                </div>
+                <p style="color:#ADAEBC; margin: 0;">Please review this request in the admin dashboard.</p>
+                <p style="color:#666; font-size:12px; margin-top:16px;">Sent on ${new Date().toLocaleString()}</p>
+              </div>
+            </div>`;
+
+          await mailService.send(
+            from,
+            to,
+            "📝 New Equipment Request Submitted",
+            htmlContent
+          );
+
+          console.log(`📧 Admin notification sent to ${to}.`);
+        } catch (mailErr) {
+          console.error("❌ Failed to send admin notification email:", mailErr);
+        }
 
         return res.status(201).json({
           error: false,
