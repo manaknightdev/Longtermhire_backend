@@ -73,11 +73,13 @@ class ChatNotificationService {
     sdk
   ) {
     try {
-      console.log("📧 ChatNotificationService.sendChatNotification called");
-      // console.log("📧 clientUserId:", clientUserId);
-      // console.log("📧 adminUserId:", adminUserId);
-      // console.log("📧 clientData:", clientData);
-      // console.log("📧 adminData:", adminData);
+      console.log(
+        "📧 ===== ChatNotificationService.sendChatNotification START ====="
+      );
+      console.log("📧 fromUserId:", fromUserId);
+      console.log("📧 toUserId:", toUserId);
+      console.log("📧 senderData:", JSON.stringify(senderData, null, 2));
+      console.log("📧 recipientData:", JSON.stringify(recipientData, null, 2));
 
       // Check rate limiting
       const canSend = await this.canSendChatNotification(
@@ -114,7 +116,7 @@ class ChatNotificationService {
                 recipientData.client_name || recipientData.first_name || "there"
               }!</h3>
               <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
-                You have received a new message from our team at <strong>Longterm Hire</strong>.
+                You have received a new message from our team at <strong>Long Term Hire</strong>.
               </p>
               
               <div style="background: #292A2B; padding: 15px; border-radius: 4px; border: 1px solid #444444; margin: 15px 0;">
@@ -160,7 +162,7 @@ class ChatNotificationService {
       const emailResult = await this.mailService.send(
         this.config.mail?.from_mail || "admin@longtermhire.com", // from
         recipientData.email, // to
-        "New Message from Longterm Hire Team", // subject
+        "New Message from Long Term Hire Team", // subject
         htmlContent // html
       );
       console.log("📧 Email service result:", emailResult);
@@ -176,6 +178,16 @@ class ChatNotificationService {
         admin_user_id: toUserId,
       });
 
+      console.log("📧 Existing notification record:", existingRecord);
+      console.log(
+        "📧 notification_count_24h value:",
+        existingRecord?.notification_count_24h
+      );
+      console.log(
+        "📧 Type of notification_count_24h:",
+        typeof existingRecord?.notification_count_24h
+      );
+
       // Format date for MySQL (YYYY-MM-DD HH:MM:SS)
       const currentTime = new Date()
         .toISOString()
@@ -183,23 +195,52 @@ class ChatNotificationService {
         .replace("T", " ");
 
       if (existingRecord) {
-        await sdk.update("chat_notifications", {
-          id: existingRecord.id,
-          last_notification_sent: currentTime,
-          notification_count_24h: existingRecord.notification_count_24h + 1,
-        });
-        console.log("📧 Updated existing notification record");
+        try {
+          // Use raw SQL update to avoid SDK issues
+          const updateSQL = `
+            UPDATE longtermhire_chat_notifications 
+            SET last_notification_sent = ?, notification_count_24h = ?, updated_at = NOW()
+            WHERE id = ?
+          `;
+          await sdk.rawQuery(updateSQL, [
+            currentTime,
+            (existingRecord.notification_count_24h || 0) + 1,
+            existingRecord.id,
+          ]);
+          console.log("📧 Updated existing notification record using raw SQL");
+        } catch (updateError) {
+          console.error(
+            "📧 Failed to update notification record:",
+            updateError
+          );
+          // Continue anyway since email was sent successfully
+        }
       } else {
-        await sdk.create("chat_notifications", {
-          client_user_id: fromUserId,
-          admin_user_id: toUserId,
-          last_notification_sent: currentTime,
-          notification_count_24h: 1,
-        });
-        console.log("📧 Created new notification record");
+        try {
+          // Use raw SQL insert to avoid SDK issues
+          const insertSQL = `
+            INSERT INTO longtermhire_chat_notifications 
+            (client_user_id, admin_user_id, last_notification_sent, notification_count_24h, created_at, updated_at)
+            VALUES (?, ?, ?, ?, NOW(), NOW())
+          `;
+          await sdk.rawQuery(insertSQL, [fromUserId, toUserId, currentTime, 1]);
+          console.log("📧 Created new notification record using raw SQL");
+        } catch (insertError) {
+          console.error(
+            "📧 Failed to create notification record:",
+            insertError
+          );
+          // Continue anyway since email was sent successfully
+        }
       }
 
       console.log(`📧 Chat notification sent to: ${recipientData.email}`);
+      console.log(
+        "📧 ✅ EMAIL SENT SUCCESSFULLY - Database update may have failed but email was delivered"
+      );
+      console.log(
+        "📧 ===== ChatNotificationService.sendChatNotification END ====="
+      );
       return true;
     } catch (error) {
       console.error("Error sending chat notification:", error);

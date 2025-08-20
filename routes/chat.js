@@ -415,7 +415,7 @@ module.exports = function (app) {
 
         // Send email notification for both directions (admin->client and client->admin)
         try {
-          console.log("🔍 Checking chat notification conditions...");
+          console.log("🔍 ===== CHAT EMAIL NOTIFICATION START =====");
           console.log("🔍 fromUserId:", fromUserId, "to_user_id:", to_user_id);
 
           const senderRoleSQL = `SELECT role_id FROM longtermhire_user WHERE id = ?`;
@@ -457,10 +457,10 @@ module.exports = function (app) {
               const notificationService = new ChatNotificationService(config);
 
               const result = await notificationService.sendChatNotification(
-                to_user_id, // client user ID
-                fromUserId, // admin user ID
-                clientData[0], // client data
-                adminData, // admin data
+                fromUserId, // admin user ID (sender)
+                to_user_id, // client user ID (recipient)
+                adminData, // admin data (sender)
+                clientData[0], // client data (recipient)
                 sdk
               );
               console.log("📧 Client notification result:", result);
@@ -507,7 +507,7 @@ module.exports = function (app) {
               const config = app.get("configuration");
               const notificationService = new ChatNotificationService(config);
 
-              // For client->admin, we swap the parameters to notify admin
+              // For client->admin, notify admin about client's message
               const result = await notificationService.sendChatNotification(
                 fromUserId, // client user ID (sender)
                 to_user_id, // admin user ID (recipient)
@@ -536,6 +536,8 @@ module.exports = function (app) {
           );
           // Don't fail the message send if notification fails
         }
+
+        console.log("🔍 ===== CHAT EMAIL NOTIFICATION END =====");
 
         return res.status(200).json({
           error: false,
