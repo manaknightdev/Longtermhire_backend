@@ -74,10 +74,10 @@ class ChatNotificationService {
   ) {
     try {
       console.log("📧 ChatNotificationService.sendChatNotification called");
-      console.log("📧 clientUserId:", clientUserId);
-      console.log("📧 adminUserId:", adminUserId);
-      console.log("📧 clientData:", clientData);
-      console.log("📧 adminData:", adminData);
+      // console.log("📧 clientUserId:", clientUserId);
+      // console.log("📧 adminUserId:", adminUserId);
+      // console.log("📧 clientData:", clientData);
+      // console.log("📧 adminData:", adminData);
 
       // Check rate limiting
       const canSend = await this.canSendChatNotification(
