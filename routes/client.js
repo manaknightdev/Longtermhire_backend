@@ -205,7 +205,7 @@ module.exports = function (app) {
                   <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
                        alt="" 
                        style="width: 240px; height: 135px; margin-bottom: 15px;">
-                  <h1 style="color: #E5E5E5; margin: 0; font-size: 28px; font-weight: 400;">Welcome to Longterm Hire</h1>
+                  <h1 style="color: #E5E5E5; margin: 0; font-size: 28px; font-weight: 400;">Welcome to Long Term Hire</h1>
                   <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 16px;">Your equipment rental portal is ready!</p>
                 </div>
 
@@ -213,7 +213,7 @@ module.exports = function (app) {
                 <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
                   <h3 style="color: #E5E5E5; margin-top: 0; font-size: 20px; font-weight: 400;">👋 Hello ${client_name}!</h3>
                   <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
-                    Welcome to <strong>Longterm Hire</strong>! Your account has been created for <strong>${company_name}</strong> 
+                    Welcome to <strong>Long Term Hire</strong>! Your account has been created for <strong>${company_name}</strong> 
                     and you now have access to our comprehensive equipment rental platform.
                   </p>
                 </div>
