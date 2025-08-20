@@ -358,41 +358,6 @@ module.exports = function (app) {
           });
         }
 
-        // Check if sender is a client and if any admin is online
-        const senderRoleSQL = `SELECT role_id FROM longtermhire_user WHERE id = ?`;
-        const senderRole = await sdk.rawQuery(senderRoleSQL, [fromUserId]);
-        const isClient = senderRole[0]?.role_id === "member";
-
-        let shouldSendAutoResponse = false;
-        let autoResponseMessageId = null;
-
-        if (isClient) {
-          console.log(
-            `👤 Client ${fromUserId} sending message, checking admin status...`
-          );
-          // Check if any admin is online
-          const onlineUsers = await chatService.getOnlineUsers();
-          const adminSQL = `SELECT id FROM longtermhire_user WHERE role_id = 'super_admin'`;
-          const admins = await sdk.rawQuery(adminSQL);
-          const adminIds = admins.map((admin) => admin.id.toString());
-          const onlineAdmins = onlineUsers.filter((userId) =>
-            adminIds.includes(userId.toString())
-          );
-
-          console.log(
-            `📊 Client auto-response check: onlineUsers=${onlineUsers}, adminIds=${adminIds}, onlineAdmins=${onlineAdmins}`
-          );
-
-          if (onlineAdmins.length === 0) {
-            shouldSendAutoResponse = true;
-            console.log(
-              `🚨 No admin online, will send auto-response to client ${fromUserId}`
-            );
-          } else {
-            console.log(`✅ Admin online, no auto-response needed`);
-          }
-        }
-
         // Insert original message into database
         const insertSQL = `
           INSERT INTO longtermhire_chat_messages 
@@ -441,76 +406,6 @@ module.exports = function (app) {
           message,
         ]);
 
-        // Send auto-response if no admin is online
-        if (shouldSendAutoResponse) {
-          console.log(
-            `🔄 Attempting to send auto-response to client ${fromUserId}...`
-          );
-          try {
-            // Get any admin user ID for auto-response
-            const adminSQL = `SELECT id FROM longtermhire_user WHERE role_id = 'super_admin' LIMIT 1`;
-            const adminResult = await sdk.rawQuery(adminSQL);
-            console.log(`👥 Found admin for auto-response:`, adminResult);
-
-            if (adminResult && adminResult.length > 0) {
-              const adminId = adminResult[0].id;
-              const autoResponseText =
-                "Thank you for your message. Our team is currently offline, but we'll respond within 24 hours during business hours.";
-
-              console.log(
-                `📝 Inserting auto-response message from admin ${adminId} to client ${fromUserId}...`
-              );
-
-              // Insert auto-response message
-              const autoResponseSQL = `
-                INSERT INTO longtermhire_chat_messages 
-                (from_user_id, to_user_id, message, message_type, created_at)
-                VALUES (?, ?, ?, 'text', NOW())
-              `;
-
-              const autoResponseResult = await sdk.rawQuery(autoResponseSQL, [
-                adminId,
-                fromUserId,
-                autoResponseText,
-              ]);
-
-              autoResponseMessageId = autoResponseResult.insertId;
-              console.log(
-                `✅ Auto-response message inserted with ID: ${autoResponseMessageId}`
-              );
-
-              // Update conversation with auto-response
-              await sdk.rawQuery(upsertConversationSQL, [
-                adminId,
-                fromUserId,
-                adminId,
-                fromUserId,
-                autoResponseMessageId,
-                autoResponseText,
-              ]);
-
-              // Send auto-response via Redis
-              await chatService.sendMessage(adminId, fromUserId, {
-                id: autoResponseMessageId,
-                message: autoResponseText,
-                message_type: "text",
-              });
-
-              console.log(
-                `✅ Auto-response sent to client ${fromUserId} - no admin online (Message ID: ${autoResponseMessageId})`
-              );
-            } else {
-              console.error(`❌ No admin found for auto-response`);
-            }
-          } catch (autoResponseError) {
-            console.error(
-              "⚠️ Failed to send auto-response:",
-              autoResponseError
-            );
-            autoResponseMessageId = null; // Ensure it's null on error
-          }
-        }
-
         // Send real-time message via Redis
         await chatService.sendMessage(fromUserId, to_user_id, {
           id: messageId,
@@ -518,7 +413,7 @@ module.exports = function (app) {
           message_type,
         });
 
-        // Send email notification if admin is messaging a client
+        // Send email notification for both directions (admin->client and client->admin)
         try {
           console.log("🔍 Checking chat notification conditions...");
           console.log("🔍 fromUserId:", fromUserId, "to_user_id:", to_user_id);
@@ -531,7 +426,10 @@ module.exports = function (app) {
           console.log("🔍 Is admin?", isAdmin);
 
           if (isAdmin) {
-            console.log("✅ Admin detected, getting client and admin data...");
+            // Admin messaging client - send notification to client
+            console.log(
+              "✅ Admin messaging client, sending notification to client..."
+            );
 
             // Get client data for email notification
             const clientSQL = `
@@ -543,35 +441,93 @@ module.exports = function (app) {
             const clientData = await sdk.rawQuery(clientSQL, [to_user_id]);
             console.log("🔍 Client data:", clientData);
 
-            // Create admin data object since we know admin is user_id = 2
+            // Create admin data object
             const adminData = {
               email: "admin@longtermhire.com",
               first_name: "Admin",
               last_name: "Team",
             };
-            console.log("🔍 Admin data (hardcoded):", adminData);
+            console.log("🔍 Admin data:", adminData);
 
             if (clientData && clientData.length > 0) {
-              console.log("✅ All data found, sending notification...");
+              console.log(
+                "✅ All data found, sending notification to client..."
+              );
               const config = app.get("configuration");
               const notificationService = new ChatNotificationService(config);
 
               const result = await notificationService.sendChatNotification(
-                to_user_id,
-                fromUserId,
-                clientData[0],
-                adminData, // Fixed: adminData is an object, not array
+                to_user_id, // client user ID
+                fromUserId, // admin user ID
+                clientData[0], // client data
+                adminData, // admin data
                 sdk
               );
-              console.log("📧 Notification result:", result);
+              console.log("📧 Client notification result:", result);
             } else {
               console.log(
-                "❌ Missing data - Client data length:",
+                "❌ Missing client data - Client data length:",
                 clientData?.length
               );
             }
           } else {
-            console.log("❌ Not an admin, skipping notification");
+            // Client messaging admin - send notification to admin
+            console.log(
+              "✅ Client messaging admin, sending notification to admin..."
+            );
+
+            // Get admin data for email notification
+            const adminSQL = `
+              SELECT u.email, u.id
+              FROM longtermhire_user u
+              WHERE u.id = ? AND u.role_id = 'super_admin'
+            `;
+            const adminResult = await sdk.rawQuery(adminSQL, [to_user_id]);
+            console.log("🔍 Admin data:", adminResult);
+
+            // Get client data
+            const clientSQL = `
+              SELECT u.email, c.client_name, c.company_name, c.phone
+              FROM longtermhire_user u
+              LEFT JOIN longtermhire_client c ON u.id = c.user_id
+              WHERE u.id = ?
+            `;
+            const clientData = await sdk.rawQuery(clientSQL, [fromUserId]);
+            console.log("🔍 Client data:", clientData);
+
+            if (
+              adminResult &&
+              adminResult.length > 0 &&
+              clientData &&
+              clientData.length > 0
+            ) {
+              console.log(
+                "✅ All data found, sending notification to admin..."
+              );
+              const config = app.get("configuration");
+              const notificationService = new ChatNotificationService(config);
+
+              // For client->admin, we swap the parameters to notify admin
+              const result = await notificationService.sendChatNotification(
+                fromUserId, // client user ID (sender)
+                to_user_id, // admin user ID (recipient)
+                clientData[0], // client data (sender)
+                {
+                  email: adminResult[0].email,
+                  first_name: "Admin",
+                  last_name: "Team",
+                }, // admin data (recipient)
+                sdk
+              );
+              console.log("📧 Admin notification result:", result);
+            } else {
+              console.log(
+                "❌ Missing data - Admin data length:",
+                adminResult?.length,
+                "Client data length:",
+                clientData?.length
+              );
+            }
           }
         } catch (notificationError) {
           console.error(
@@ -586,8 +542,6 @@ module.exports = function (app) {
           message: "Message sent successfully",
           data: {
             id: messageId,
-            auto_response_sent: shouldSendAutoResponse,
-            auto_response_id: autoResponseMessageId,
           },
         });
       } catch (error) {

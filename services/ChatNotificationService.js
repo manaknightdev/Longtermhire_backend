@@ -8,23 +8,23 @@ class ChatNotificationService {
 
   /**
    * Check if we can send a chat notification (rate limiting)
-   * @param {number} clientUserId - The client's user ID
-   * @param {number} adminUserId - The admin's user ID
+   * @param {number} fromUserId - The sender's user ID
+   * @param {number} toUserId - The recipient's user ID
    * @param {Object} sdk - The SDK instance
    * @returns {Promise<boolean>} - True if notification can be sent
    */
-  async canSendChatNotification(clientUserId, adminUserId, sdk) {
+  async canSendChatNotification(fromUserId, toUserId, sdk) {
     try {
       console.log(
-        "🔍 Checking rate limiting for client:",
-        clientUserId,
-        "admin:",
-        adminUserId
+        "🔍 Checking rate limiting for from:",
+        fromUserId,
+        "to:",
+        toUserId
       );
 
       const existingRecord = await sdk.findOne("chat_notifications", {
-        client_user_id: clientUserId,
-        admin_user_id: adminUserId,
+        client_user_id: fromUserId,
+        admin_user_id: toUserId,
       });
 
       console.log("🔍 Existing notification record:", existingRecord);
@@ -58,18 +58,18 @@ class ChatNotificationService {
   }
 
   /**
-   * Send chat notification email to client
-   * @param {number} clientUserId - The client's user ID
-   * @param {number} adminUserId - The admin's user ID
-   * @param {Object} clientData - Client information
-   * @param {Object} adminData - Admin information
+   * Send chat notification email to recipient
+   * @param {number} fromUserId - The sender's user ID
+   * @param {number} toUserId - The recipient's user ID
+   * @param {Object} senderData - Sender information
+   * @param {Object} recipientData - Recipient information
    * @param {Object} sdk - The SDK instance
    */
   async sendChatNotification(
-    clientUserId,
-    adminUserId,
-    clientData,
-    adminData,
+    fromUserId,
+    toUserId,
+    senderData,
+    recipientData,
     sdk
   ) {
     try {
@@ -81,15 +81,15 @@ class ChatNotificationService {
 
       // Check rate limiting
       const canSend = await this.canSendChatNotification(
-        clientUserId,
-        adminUserId,
+        fromUserId,
+        toUserId,
         sdk
       );
       console.log("📧 Rate limiting check result:", canSend);
 
       if (!canSend) {
         console.log(
-          `⏰ Chat notification rate limited for client: ${clientUserId}`
+          `⏰ Chat notification rate limited for user: ${fromUserId}`
         );
         return false;
       }
@@ -111,7 +111,7 @@ class ChatNotificationService {
             <!-- Message Content -->
             <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
               <h3 style="color: #E5E5E5; margin-top: 0; font-size: 18px; font-weight: 400;">Hello ${
-                clientData.client_name || "there"
+                recipientData.client_name || recipientData.first_name || "there"
               }!</h3>
               <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
                 You have received a new message from our team at <strong>Longterm Hire</strong>.
@@ -119,8 +119,8 @@ class ChatNotificationService {
               
               <div style="background: #292A2B; padding: 15px; border-radius: 4px; border: 1px solid #444444; margin: 15px 0;">
                 <p style="color: #E5E5E5; margin: 0; font-size: 14px;"><strong>From:</strong> ${
-                  adminData.first_name || "Admin"
-                } ${adminData.last_name || ""}</p>
+                  senderData.client_name || senderData.first_name || "User"
+                } ${senderData.last_name || ""}</p>
                 <p style="color: #ADAEBC; margin: 5px 0 0 0; font-size: 14px;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
               </div>
             </div>
@@ -153,13 +153,13 @@ class ChatNotificationService {
         </div>
       `;
 
-      console.log("📧 About to send email to:", clientData.email);
+      console.log("📧 About to send email to:", recipientData.email);
       console.log("📧 MailService config:", this.config);
 
       // Send email using correct MailService format (4 parameters)
       const emailResult = await this.mailService.send(
         this.config.mail?.from_mail || "admin@longtermhire.com", // from
-        clientData.email, // to
+        recipientData.email, // to
         "New Message from Longterm Hire Team", // subject
         htmlContent // html
       );
@@ -172,8 +172,8 @@ class ChatNotificationService {
 
       // Update notification record
       const existingRecord = await sdk.findOne("chat_notifications", {
-        client_user_id: clientUserId,
-        admin_user_id: adminUserId,
+        client_user_id: fromUserId,
+        admin_user_id: toUserId,
       });
 
       // Format date for MySQL (YYYY-MM-DD HH:MM:SS)
@@ -191,15 +191,15 @@ class ChatNotificationService {
         console.log("📧 Updated existing notification record");
       } else {
         await sdk.create("chat_notifications", {
-          client_user_id: clientUserId,
-          admin_user_id: adminUserId,
+          client_user_id: fromUserId,
+          admin_user_id: toUserId,
           last_notification_sent: currentTime,
           notification_count_24h: 1,
         });
         console.log("📧 Created new notification record");
       }
 
-      console.log(`📧 Chat notification sent to client: ${clientData.email}`);
+      console.log(`📧 Chat notification sent to: ${recipientData.email}`);
       return true;
     } catch (error) {
       console.error("Error sending chat notification:", error);
