@@ -261,7 +261,7 @@ module.exports = function (app) {
           const emailResult = await mailService.send(
             config.mail?.from_mail || "noreply@longtermhire.com",
             email,
-            `🎉 Welcome to Longterm Hire - Your Account is Ready!`,
+            `🎉 Welcome to Long Term Hire - Your Account is Ready!`,
             htmlContent
           );
 
