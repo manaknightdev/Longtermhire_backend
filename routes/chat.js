@@ -950,7 +950,8 @@ module.exports = function (app) {
           SELECT
             (SELECT COUNT(*) FROM longtermhire_user WHERE role_id = 'member') as total_clients,
             (SELECT COUNT(*) FROM longtermhire_equipment_item) as total_equipment,
-            (SELECT COUNT(*) FROM longtermhire_chat_messages WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND read_at IS NULL) as recent_messages,
+            (SELECT COUNT(*) FROM longtermhire_chat_messages WHERE read_at IS NULL) as total_unread_messages,
+            (SELECT COUNT(*) FROM longtermhire_chat_messages WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND read_at IS NULL) as recent_unread_messages,
             (SELECT COUNT(*) FROM longtermhire_equipment_requests WHERE status = 'pending') as pending_requests,
             (SELECT COUNT(*) FROM longtermhire_client_login_logs WHERE login_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as logins_today,
             (SELECT COUNT(*) FROM longtermhire_client_login_logs WHERE login_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)) as logins_this_week
