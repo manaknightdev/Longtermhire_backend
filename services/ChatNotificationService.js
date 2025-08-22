@@ -22,81 +22,35 @@ class ChatNotificationService {
         toUserId
       );
 
-      // First, determine the direction and user roles
-      const fromUserRole = await sdk.rawQuery(
-        `SELECT role_id FROM longtermhire_user WHERE id = ?`,
-        [fromUserId]
-      );
-      const toUserRole = await sdk.rawQuery(
-        `SELECT role_id FROM longtermhire_user WHERE id = ?`,
-        [toUserId]
-      );
+      const existingRecord = await sdk.findOne("chat_notifications", {
+        client_user_id: fromUserId,
+        admin_user_id: toUserId,
+      });
 
-      const fromIsAdmin = fromUserRole[0]?.role_id === "super_admin";
-      const toIsAdmin = toUserRole[0]?.role_id === "super_admin";
+      console.log("🔍 Existing notification record:", existingRecord);
 
-      console.log(
-        "🔍 Direction check - fromIsAdmin:",
-        fromIsAdmin,
-        "toIsAdmin:",
-        toIsAdmin
-      );
-
-      // RULE 1: Client → Admin: ALWAYS send (no rate limiting)
-      if (!fromIsAdmin && toIsAdmin) {
-        console.log(
-          "✅ Client messaging admin - ALWAYS send notification (no rate limiting)"
-        );
-        return true;
+      if (!existingRecord) {
+        console.log("✅ No existing record, can send notification");
+        return true; // First notification
       }
 
-      // RULE 2: Admin → Client: Rate limit to 1 per 24 hours
-      if (fromIsAdmin && !toIsAdmin) {
-        console.log(
-          "🔍 Admin messaging client - applying 24-hour rate limiting"
-        );
+      const lastNotification = new Date(existingRecord.last_notification_sent);
+      const now = new Date();
+      const hoursSinceLastNotification =
+        (now - lastNotification) / (1000 * 60 * 60);
 
-        const existingRecord = await sdk.findOne("chat_notifications", {
-          client_user_id: fromUserId,
-          admin_user_id: toUserId,
-        });
-
-        console.log("🔍 Existing notification record:", existingRecord);
-
-        if (!existingRecord) {
-          console.log("✅ No existing record, can send notification");
-          return true; // First notification
-        }
-
-        const lastNotification = new Date(
-          existingRecord.last_notification_sent
-        );
-        const now = new Date();
-        const hoursSinceLastNotification =
-          (now - lastNotification) / (1000 * 60 * 60);
-
-        console.log("🔍 Last notification:", lastNotification);
-        console.log("🔍 Current time:", now);
-        console.log(
-          "🔍 Hours since last notification:",
-          hoursSinceLastNotification
-        );
-
-        // Allow notification if more than 24 hours have passed
-        const canSend = hoursSinceLastNotification >= 24;
-        console.log("🔍 Can send notification:", canSend);
-
-        return canSend;
-      }
-
-      // RULE 3: Other cases (admin→admin, client→client) - allow but log
+      console.log("🔍 Last notification:", lastNotification);
+      console.log("🔍 Current time:", now);
       console.log(
-        "⚠️ Unusual case - fromIsAdmin:",
-        fromIsAdmin,
-        "toIsAdmin:",
-        toIsAdmin
+        "🔍 Hours since last notification:",
+        hoursSinceLastNotification
       );
-      return true;
+
+      // Allow notification if more than 24 hours have passed
+      const canSend = hoursSinceLastNotification >= 24;
+      console.log("🔍 Can send notification:", canSend);
+
+      return canSend;
     } catch (error) {
       console.error("Error checking chat notification eligibility:", error);
       return false;
@@ -292,6 +246,7 @@ class ChatNotificationService {
       console.error("Error sending chat notification:", error);
       return false;
     }
+  }
 }
 
 module.exports = ChatNotificationService;
