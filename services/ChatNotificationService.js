@@ -1,5 +1,14 @@
 const MailService = require("../../../baas/services/MailService");
 
+/**
+ * ChatNotificationService handles sending email notifications for chat messages
+ *
+ * Notification Behavior:
+ * - CLIENT → ADMIN: Always send email notification (no rate limiting)
+ * - ADMIN → CLIENT: Send email notification only once per 24 hours (rate limiting)
+ *
+ * This ensures clients can always reach admins while preventing admin spam to clients.
+ */
 class ChatNotificationService {
   constructor(config) {
     this.mailService = new MailService(config);
@@ -11,16 +20,35 @@ class ChatNotificationService {
    * @param {number} fromUserId - The sender's user ID
    * @param {number} toUserId - The recipient's user ID
    * @param {Object} sdk - The SDK instance
+   * @param {boolean} isFromClient - Whether the sender is a client (true) or admin (false)
    * @returns {Promise<boolean>} - True if notification can be sent
    */
-  async canSendChatNotification(fromUserId, toUserId, sdk) {
+  async canSendChatNotification(
+    fromUserId,
+    toUserId,
+    sdk,
+    isFromClient = false
+  ) {
     try {
       console.log(
         "🔍 Checking rate limiting for from:",
         fromUserId,
         "to:",
-        toUserId
+        toUserId,
+        "isFromClient:",
+        isFromClient
       );
+
+      // If sender is a client, always allow notification (no rate limiting)
+      if (isFromClient) {
+        console.log(
+          "✅ Client sender - no rate limiting, can send notification"
+        );
+        return true;
+      }
+
+      // If sender is admin, apply rate limiting (1 per 24 hours)
+      console.log("🔍 Admin sender - applying rate limiting (1 per 24 hours)");
 
       const existingRecord = await sdk.findOne("chat_notifications", {
         client_user_id: fromUserId,
@@ -81,11 +109,22 @@ class ChatNotificationService {
       console.log("📧 senderData:", JSON.stringify(senderData, null, 2));
       console.log("📧 recipientData:", JSON.stringify(recipientData, null, 2));
 
+      // Determine if the sender is a client or admin
+      const isFromClient = senderData.is_client === true;
+      console.log("📧 Sender type - isFromClient:", isFromClient);
+      console.log(
+        "📧 Notification type:",
+        isFromClient
+          ? "CLIENT → ADMIN (no rate limiting)"
+          : "ADMIN → CLIENT (rate limited to 1 per 24h)"
+      );
+
       // Check rate limiting
       const canSend = await this.canSendChatNotification(
         fromUserId,
         toUserId,
-        sdk
+        sdk,
+        isFromClient
       );
       console.log("📧 Rate limiting check result:", canSend);
 
@@ -196,18 +235,33 @@ class ChatNotificationService {
 
       if (existingRecord) {
         try {
-          // Use raw SQL update to avoid SDK issues
-          const updateSQL = `
-            UPDATE longtermhire_chat_notifications 
-            SET last_notification_sent = ?, notification_count_24h = ?, updated_at = NOW()
-            WHERE id = ?
-          `;
-          await sdk.rawQuery(updateSQL, [
-            currentTime,
-            (existingRecord.notification_count_24h || 0) + 1,
-            existingRecord.id,
-          ]);
-          console.log("📧 Updated existing notification record using raw SQL");
+          if (isFromClient) {
+            // Client to admin: Update timestamp but don't increment count (no rate limiting)
+            const updateSQL = `
+              UPDATE longtermhire_chat_notifications 
+              SET last_notification_sent = ?, updated_at = NOW()
+              WHERE id = ?
+            `;
+            await sdk.rawQuery(updateSQL, [currentTime, existingRecord.id]);
+            console.log(
+              "📧 Updated client-to-admin notification record (no rate limiting)"
+            );
+          } else {
+            // Admin to client: Update timestamp and increment count (rate limiting applies)
+            const updateSQL = `
+              UPDATE longtermhire_chat_notifications 
+              SET last_notification_sent = ?, notification_count_24h = ?, updated_at = NOW()
+              WHERE id = ?
+            `;
+            await sdk.rawQuery(updateSQL, [
+              currentTime,
+              (existingRecord.notification_count_24h || 0) + 1,
+              existingRecord.id,
+            ]);
+            console.log(
+              "📧 Updated admin-to-client notification record (rate limiting applies)"
+            );
+          }
         } catch (updateError) {
           console.error(
             "📧 Failed to update notification record:",
@@ -217,14 +271,39 @@ class ChatNotificationService {
         }
       } else {
         try {
-          // Use raw SQL insert to avoid SDK issues
-          const insertSQL = `
-            INSERT INTO longtermhire_chat_notifications 
-            (client_user_id, admin_user_id, last_notification_sent, notification_count_24h, created_at, updated_at)
-            VALUES (?, ?, ?, ?, NOW(), NOW())
-          `;
-          await sdk.rawQuery(insertSQL, [fromUserId, toUserId, currentTime, 1]);
-          console.log("📧 Created new notification record using raw SQL");
+          if (isFromClient) {
+            // Client to admin: Create record without count (no rate limiting)
+            const insertSQL = `
+              INSERT INTO longtermhire_chat_notifications 
+              (client_user_id, admin_user_id, last_notification_sent, notification_count_24h, created_at, updated_at)
+              VALUES (?, ?, ?, ?, NOW(), NOW())
+            `;
+            await sdk.rawQuery(insertSQL, [
+              fromUserId,
+              toUserId,
+              currentTime,
+              0,
+            ]);
+            console.log(
+              "📧 Created new client-to-admin notification record (no rate limiting)"
+            );
+          } else {
+            // Admin to client: Create record with count (rate limiting applies)
+            const insertSQL = `
+              INSERT INTO longtermhire_chat_notifications 
+              (client_user_id, admin_user_id, last_notification_sent, notification_count_24h, created_at, updated_at)
+              VALUES (?, ?, ?, ?, NOW(), NOW())
+            `;
+            await sdk.rawQuery(insertSQL, [
+              fromUserId,
+              toUserId,
+              currentTime,
+              1,
+            ]);
+            console.log(
+              "📧 Created new admin-to-client notification record (rate limiting applies)"
+            );
+          }
         } catch (insertError) {
           console.error(
             "📧 Failed to create notification record:",
@@ -235,6 +314,13 @@ class ChatNotificationService {
       }
 
       console.log(`📧 Chat notification sent to: ${recipientData.email}`);
+      console.log(
+        `📧 ✅ EMAIL SENT SUCCESSFULLY - ${
+          isFromClient
+            ? "CLIENT→ADMIN (no rate limiting)"
+            : "ADMIN→CLIENT (rate limited to 1 per 24h)"
+        }`
+      );
       console.log(
         "📧 ✅ EMAIL SENT SUCCESSFULLY - Database update may have failed but email was delivered"
       );
