@@ -135,64 +135,131 @@ class ChatNotificationService {
         return false;
       }
 
-      // Create HTML email content
-      const htmlContent = `
-        <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
-          <div style="background-color: #1F1F20; padding: 30px; border-radius: 8px; border: 2px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-            
-            <!-- Header with Logo -->
-            <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
-              <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
-                   alt="Longterm Hire Logo" 
-                   style="width: 240px; height: 135px; margin-bottom: 15px;">
-              <h1 style="color: #E5E5E5; margin: 0; font-size: 24px; font-weight: 400;">💬 New Message Available</h1>
-              <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 16px;">You have a new message from our team</p>
-            </div>
+      // Create HTML email content based on sender type
+      let htmlContent, emailSubject;
 
-            <!-- Message Content -->
-            <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
-              <h3 style="color: #E5E5E5; margin-top: 0; font-size: 18px; font-weight: 400;">Hello ${
-                recipientData.client_name || recipientData.first_name || "there"
-              }!</h3>
-              <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
-                You have received a new message from our team at <strong>Long Term Hire</strong>.
-              </p>
+      if (isFromClient) {
+        // Client to Admin email template
+        emailSubject = `New Message from ${
+          senderData.client_name || senderData.first_name || "Client"
+        } ${senderData.last_name || ""}`;
+        htmlContent = `
+          <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
+            <div style="background-color: #1F1F20; padding: 30px; border-radius: 8px; border: 2px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
               
-              <div style="background: #292A2B; padding: 15px; border-radius: 4px; border: 1px solid #444444; margin: 15px 0;">
-                <p style="color: #E5E5E5; margin: 0; font-size: 14px;"><strong>From:</strong> ${
-                  senderData.client_name || senderData.first_name || "User"
-                } ${senderData.last_name || ""}</p>
-                <p style="color: #ADAEBC; margin: 5px 0 0 0; font-size: 14px;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+              <!-- Header with Logo -->
+              <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
+                <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
+                     alt="Longterm Hire Logo" 
+                     style="width: 240px; height: 135px; margin-bottom: 15px;">
+                <h1 style="color: #E5E5E5; margin: 0; font-size: 24px; font-weight: 400;">💬 New Client Message</h1>
+                <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 16px;">A client has sent you a new message</p>
+              </div>
+
+              <!-- Message Content -->
+              <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
+                <h3 style="color: #E5E5E5; margin-top: 0; font-size: 18px; font-weight: 400;">Hello Admin!</h3>
+                <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
+                  You have received a new message from a client at <strong>Long Term Hire</strong>.
+                </p>
+                
+                <div style="background: #292A2B; padding: 15px; border-radius: 4px; border: 1px solid #444444; margin: 15px 0;">
+                  <p style="color: #E5E5E5; margin: 0; font-size: 14px;"><strong>From Client:</strong> ${
+                    senderData.client_name || senderData.first_name || "Unknown"
+                  } ${senderData.last_name || ""}</p>
+                  <p style="color: #ADAEBC; margin: 5px 0 0 0; font-size: 14px;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                </div>
+              </div>
+
+              <!-- Login Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://www.longtermhire.com/login" 
+                   style="background: #FDCE06; color: #1F1F20; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; border: 1px solid #FDCE06;">
+                  🔗 Login to View Message
+                </a>
+              </div>
+
+              <!-- Notice -->
+              <div style="background: #1C1C1C; padding: 20px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444; border-left: 4px solid #FDCE06;">
+                <h4 style="color: #FDCE06; margin-top: 0; font-size: 16px; font-weight: 400;">ℹ️ Client Communication</h4>
+                <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 14px; line-height: 1.5;">
+                  Please respond to this client message promptly. You will receive notifications for all client messages.
+                </p>
+              </div>
+
+              <!-- Footer -->
+              <div style="border-top: 1px solid #333333; padding-top: 20px; margin-top: 30px; text-align: center;">
+                <p style="color: #ADAEBC; font-size: 14px; margin: 0;">
+                  Need assistance? Contact our support team.<br>
+                  <small style="color: #666666;">Notification sent on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</small>
+                </p>
               </div>
             </div>
+          </div>
+        `;
+      } else {
+        // Admin to Client email template (unchanged)
+        emailSubject = "New Message from Long Term Hire Team";
+        htmlContent = `
+          <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
+            <div style="background-color: #1F1F20; padding: 30px; border-radius: 8px; border: 2px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+              
+              <!-- Header with Logo -->
+              <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
+                <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
+                     alt="Longterm Hire Logo" 
+                     style="width: 240px; height: 135px; margin-bottom: 15px;">
+                <h1 style="color: #E5E5E5; margin: 0; font-size: 24px; font-weight: 400;">💬 New Message Available</h1>
+                <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 16px;">You have a new message from our team</p>
+              </div>
 
-            <!-- Login Button -->
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="https://longtermhire.manaknightdigital.com/client/login" 
-                 style="background: #FDCE06; color: #1F1F20; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; border: 1px solid #FDCE06;">
-                🔗 Login to View Message
-              </a>
-            </div>
+              <!-- Message Content -->
+              <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
+                <h3 style="color: #E5E5E5; margin-top: 0; font-size: 18px; font-weight: 400;">Hello ${
+                  recipientData.client_name ||
+                  recipientData.first_name ||
+                  "there"
+                }!</h3>
+                <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
+                  You have received a new message from our team at <strong>Long Term Hire</strong>.
+                </p>
+                
+                <div style="background: #292A2B; padding: 15px; border-radius: 4px; border: 1px solid #444444; margin: 15px 0;">
+                  <p style="color: #E5E5E5; margin: 0; font-size: 14px;"><strong>From:</strong> ${
+                    senderData.client_name || senderData.first_name || "User"
+                  } ${senderData.last_name || ""}</p>
+                  <p style="color: #ADAEBC; margin: 5px 0 0 0; font-size: 14px;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                </div>
+              </div>
 
-            <!-- Notice -->
-            <div style="background: #1C1C1C; padding: 20px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444; border-left: 4px solid #FDCE06;">
-              <h4 style="color: #FDCE06; margin-top: 0; font-size: 16px; font-weight: 400;">ℹ️ Notification Policy</h4>
-              <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 14px; line-height: 1.5;">
-                To avoid spam, you will only receive one notification per 24 hours. 
-                Please log in to view all your messages and respond.
-              </p>
-            </div>
+              <!-- Login Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://www.longtermhire.com/client/login" 
+                   style="background: #FDCE06; color: #1F1F20; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; border: 1px solid #FDCE06;">
+                  🔗 Login to View Message
+                </a>
+              </div>
 
-            <!-- Footer -->
-            <div style="border-top: 1px solid #333333; padding-top: 20px; margin-top: 30px; text-align: center;">
-              <p style="color: #ADAEBC; font-size: 14px; margin: 0;">
-                Need assistance? Contact our support team.<br>
-                <small style="color: #666666;">Notification sent on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</small>
-              </p>
+              <!-- Notice -->
+              <div style="background: #1C1C1C; padding: 20px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444; border-left: 4px solid #FDCE06;">
+                <h4 style="color: #FDCE06; margin-top: 0; font-size: 16px; font-weight: 400;">ℹ️ Notification Policy</h4>
+                <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 14px; line-height: 1.5;">
+                  To avoid spam, you will only receive one notification per 24 hours. 
+                  Please log in to view all your messages and respond.
+                </p>
+              </div>
+
+              <!-- Footer -->
+              <div style="border-top: 1px solid #333333; padding-top: 20px; margin-top: 30px; text-align: center;">
+                <p style="color: #ADAEBC; font-size: 14px; margin: 0;">
+                  Need assistance? Contact our support team.<br>
+                  <small style="color: #666666;">Notification sent on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</small>
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      `;
+        `;
+      }
 
       console.log("📧 About to send email to:", recipientData.email);
       console.log("📧 MailService config:", this.config);
@@ -201,7 +268,7 @@ class ChatNotificationService {
       const emailResult = await this.mailService.send(
         this.config.mail?.from_mail || "admin@longtermhire.com", // from
         recipientData.email, // to
-        "New Message from Long Term Hire Team", // subject
+        emailSubject, // subject
         htmlContent // html
       );
       console.log("📧 Email service result:", emailResult);
