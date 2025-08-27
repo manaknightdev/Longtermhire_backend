@@ -1089,7 +1089,7 @@ module.exports = function (app) {
   app.put(
     "/v1/api/longtermhire/dashboard/messages/read",
     TokenMiddleware(),
-    RoleMiddleware(["super_admin"]),
+    RoleMiddleware(["super_admin", "member"]),
     async (req, res) => {
       try {
         const sdk = app.get("sdk");
