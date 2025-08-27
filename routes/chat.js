@@ -511,7 +511,7 @@ module.exports = function (app) {
               const result = await notificationService.sendChatNotification(
                 fromUserId, // client user ID (sender)
                 to_user_id, // admin user ID (recipient)
-                clientData[0], // client data (sender)
+                { ...clientData[0], is_client: true }, // client data (sender) with is_client flag
                 {
                   email: adminResult[0].email,
                   first_name: "Admin",
