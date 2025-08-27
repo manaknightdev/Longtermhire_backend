@@ -304,14 +304,32 @@ module.exports = function (app) {
         // Reverse to show oldest first (WhatsApp style)
         const reversedMessages = messages ? messages.reverse() : [];
 
-        // Mark messages as read (only for this conversation)
-        const markReadSQL = `
-          UPDATE longtermhire_chat_messages
-          SET read_at = NOW()
+        // Mark messages as read automatically ONLY for admin users
+        if (req.role === "super_admin") {
+          const markReadSQL = `
+            UPDATE longtermhire_chat_messages
+            SET read_at = NOW()
+            WHERE to_user_id = ? AND read_at IS NULL
+            AND ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?))
+          `;
+          await sdk.rawQuery(markReadSQL, [
+            userId,
+            user1_id,
+            user2_id,
+            user2_id,
+            user1_id,
+          ]);
+        }
+
+        // Get unread count for current user in this conversation
+        const unreadCountSQL = `
+          SELECT COUNT(*) as unread_count
+          FROM longtermhire_chat_messages
           WHERE to_user_id = ? AND read_at IS NULL
           AND ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?))
         `;
-        await sdk.rawQuery(markReadSQL, [
+
+        const unreadResult = await sdk.rawQuery(unreadCountSQL, [
           userId,
           user1_id,
           user2_id,
@@ -319,9 +337,12 @@ module.exports = function (app) {
           user1_id,
         ]);
 
+        const unreadCount = unreadResult[0]?.unread_count || 0;
+
         return res.status(200).json({
           error: false,
           data: reversedMessages,
+          unread_count: unreadCount,
           pagination: {
             page: parseInt(page),
             limit: parseInt(limit),
