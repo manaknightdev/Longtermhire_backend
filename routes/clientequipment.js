@@ -429,7 +429,10 @@ module.exports = function (app) {
                   </p>
                 </div>
                 <p style="color:#ADAEBC; margin: 0;">Please review this request in the admin chat.</p>
-                <p style="color:#666; font-size:12px; margin-top:16px;">Sent on ${new Date().toLocaleString()}</p>
+                <p style="color:#666; font-size:12px; margin-top:16px;">Sent on ${new Date().toLocaleString(
+                  "en-AU",
+                  { timeZone: "Australia/Melbourne" }
+                )}</p>
               </div>
             </div>`;
 

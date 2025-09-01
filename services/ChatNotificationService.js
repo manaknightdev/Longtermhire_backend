@@ -167,7 +167,10 @@ class ChatNotificationService {
                   <p style="color: #E5E5E5; margin: 0; font-size: 14px;"><strong>From Client:</strong> ${
                     senderData.client_name || senderData.first_name || "Unknown"
                   } ${senderData.last_name || ""}</p>
-                  <p style="color: #ADAEBC; margin: 5px 0 0 0; font-size: 14px;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                  <p style="color: #ADAEBC; margin: 5px 0 0 0; font-size: 14px;"><strong>Time:</strong> ${new Date().toLocaleString(
+                    "en-AU",
+                    { timeZone: "Australia/Melbourne" }
+                  )}</p>
                 </div>
               </div>
 
@@ -228,7 +231,10 @@ class ChatNotificationService {
                   <p style="color: #E5E5E5; margin: 0; font-size: 14px;"><strong>From:</strong> ${
                     senderData.client_name || senderData.first_name || "User"
                   } ${senderData.last_name || ""}</p>
-                  <p style="color: #ADAEBC; margin: 5px 0 0 0; font-size: 14px;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                  <p style="color: #ADAEBC; margin: 5px 0 0 0; font-size: 14px;"><strong>Time:</strong> ${new Date().toLocaleString(
+                    "en-AU",
+                    { timeZone: "Australia/Melbourne" }
+                  )}</p>
                 </div>
               </div>
 
