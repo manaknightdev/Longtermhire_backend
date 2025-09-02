@@ -55,14 +55,16 @@ module.exports = function (app) {
           LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
           LEFT JOIN longtermhire_client_pricing cp ON cp.client_user_id = ce.client_user_id
           LEFT JOIN longtermhire_pricing_package pp ON cp.pricing_package_id = pp.id
-          WHERE ce.client_user_id = ? AND e.availability = 1
+          WHERE ce.client_user_id = ?
           GROUP BY e.id, c.id, pp.id
-          ORDER BY e.category_name, e.equipment_name
+          ORDER BY e.category_name, e.position ASC, e.equipment_name
         `,
           [req.user_id]
         );
 
-        console.log(`✅ Found ${equipment.length} equipment items for client`);
+        console.log(
+          `✅ Found ${equipment.length} equipment items for client (including unavailable)`
+        );
 
         // Debug: Log first equipment item to see what we're getting
         if (equipment.length > 0) {
@@ -70,6 +72,7 @@ module.exports = function (app) {
             id: equipment[0].id,
             equipment_id: equipment[0].equipment_id,
             equipment_name: equipment[0].equipment_name,
+            availability: equipment[0].availability,
             content_description: equipment[0].content_description,
             content_image: equipment[0].content_image,
             content_images: equipment[0].content_images,
@@ -79,13 +82,15 @@ module.exports = function (app) {
           });
         }
 
-        // Debug: Log all equipment items to see content_images
-        console.log("🔍 Debug - All equipment content_images:");
+        // Debug: Log all equipment items to see content_images and availability
+        console.log("🔍 Debug - All equipment items:");
         equipment.forEach((item, index) => {
           console.log(
             `  ${index + 1}. ${item.equipment_name} (${
               item.equipment_id
-            }): content_images = "${item.content_images}"`
+            }) - Available: ${item.availability} - content_images = "${
+              item.content_images
+            }"`
           );
         });
 

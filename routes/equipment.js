@@ -73,7 +73,7 @@ module.exports = function (app) {
         LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
         ${whereClause}
         GROUP BY e.id
-        ORDER BY e.id DESC
+        ORDER BY e.category_name, e.position ASC, e.equipment_name
         LIMIT ? OFFSET ?
       `;
 
@@ -169,6 +169,7 @@ module.exports = function (app) {
           minimumDuration,
           availability,
           description,
+          position,
         } = req.body;
 
         // Get a valid user ID (use the current admin user ID 2)
@@ -184,8 +185,8 @@ module.exports = function (app) {
         // Insert equipment into database using raw SQL
         const insertSQL = `
         INSERT INTO longtermhire_equipment_item
-        (category_id, category_name, equipment_id, equipment_name, base_price, minimum_duration, availability, user_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (category_id, category_name, equipment_id, equipment_name, base_price, minimum_duration, availability, position, user_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
         const result = await sdk.rawQuery(insertSQL, [
@@ -196,6 +197,7 @@ module.exports = function (app) {
           basePrice,
           `${minimumDuration} Months`,
           availability !== undefined ? availability : true,
+          position || 0,
           userId,
           currentTime,
           currentTime,
@@ -249,6 +251,7 @@ module.exports = function (app) {
           minimumDuration,
           availability,
           description,
+          position,
         } = req.body;
 
         const equipmentIdParam = req.params.id;
@@ -268,6 +271,7 @@ module.exports = function (app) {
             base_price = ?,
             minimum_duration = ?,
             availability = ?,
+            position = ?,
             updated_at = ?
           WHERE id = ?
         `;
@@ -280,6 +284,7 @@ module.exports = function (app) {
           basePrice,
           minimumDuration || "3 Months",
           availability !== undefined ? availability : 1,
+          position || 0,
           currentTime,
           equipmentIdParam,
         ]);

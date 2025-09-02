@@ -97,7 +97,7 @@ module.exports = function (app) {
 
       const accessToken = JwtService.createAccessToken(
         tokenPayload,
-        60 * 60 * 24 * 7,
+        60 * 60 * 12,
         config.jwt_key
       );
 
@@ -144,7 +144,7 @@ module.exports = function (app) {
         role: user.role_id,
         email: user.email,
         client_profile: clientProfile,
-        expire_at: 60 * 60 * 24 * 7,
+        expire_at: 60 * 60 * 12,
         message: "Login successful",
       });
     } catch (error) {
