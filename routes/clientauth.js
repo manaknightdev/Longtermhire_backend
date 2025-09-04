@@ -2,6 +2,7 @@ const TokenMiddleware = require("../../../baas/middleware/TokenMiddleware");
 const RoleMiddleware = require("../middleware/RoleMiddleware");
 const JwtService = require("../../../baas/services/JwtService");
 const bcrypt = require("bcryptjs");
+const MailService = require("../../../baas/services/MailService");
 
 module.exports = function (app) {
   // Client Login
@@ -89,6 +90,9 @@ module.exports = function (app) {
 
       console.log("✅ All client checks passed, generating token...");
 
+      // Check if this is the user's first login
+      const isFirstLogin = user.first_login === true || user.first_login === 1;
+
       // Generate JWT token
       const tokenPayload = {
         user_id: user.id,
@@ -100,6 +104,127 @@ module.exports = function (app) {
         60 * 60 * 12,
         config.jwt_key
       );
+
+      // Send email to admin if this is the first login
+      if (isFirstLogin) {
+        try {
+          console.log(
+            "📧 First login detected, sending notification to admin..."
+          );
+
+          // Get specific admin user (ID 2)
+          const adminUser = await sdk.findOne("user", {
+            id: 2,
+            role_id: "admin",
+            status: 1,
+          });
+
+          if (adminUser) {
+            const mailService = new MailService(config);
+
+            // Get client profile for email content
+            let clientProfile = null;
+            try {
+              clientProfile = await sdk.findOne("client", {
+                user_id: user.id,
+              });
+            } catch (error) {
+              console.log(
+                "⚠️ No client profile found for first login notification"
+              );
+            }
+
+            // Prepare email content
+            const clientName = clientProfile?.client_name || user.email;
+            const companyName = clientProfile?.company_name || "N/A";
+            const loginTime = new Date().toLocaleString("en-AU", {
+              timeZone: "Australia/Melbourne",
+            });
+            const clientIp =
+              req.ip ||
+              req.connection.remoteAddress ||
+              req.headers["x-forwarded-for"] ||
+              "unknown";
+
+            const emailSubject = `New Client First Login - ${clientName}`;
+            const emailHtml = `
+              <div style="font-family: 'Inter', Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
+                <div style="background-color: #1F1F20; padding: 24px; border-radius: 8px; border: 2px solid #E5E7EB;">
+                  <h2 style="color: #E5E5E5; margin: 0; font-weight: 500;">🎉 New Client First Login</h2>
+                  <p style="color: #ADAEBC; margin: 12px 0 0 0;">A client has successfully logged in for the first time using their provided credentials.</p>
+                  
+                  <div style="background: #292A2B; padding: 16px; border-radius: 6px; margin: 16px 0; border: 1px solid #444444;">
+                    <h3 style="color: #FDCE06; margin: 0 0 12px 0; font-size: 16px;">Client Details</h3>
+                    <p style="color: #E5E5E5; margin: 0;">
+                      <strong style="color:#FDCE06;">Client Name:</strong> ${clientName}<br/>
+                      <strong style="color:#FDCE06;">Company:</strong> ${companyName}<br/>
+                      <strong style="color:#FDCE06;">Email:</strong> ${
+                        user.email
+                      }<br/>
+                      <strong style="color:#FDCE06;">Login Time:</strong> ${loginTime}<br/>
+                     
+                    </p>
+                  </div>
+
+                  <div style="background: #1a4d1a; padding: 16px; border-radius: 6px; margin: 16px 0; border: 1px solid #28a745;">
+                    <p style="margin: 0; color: #90EE90;">
+                      <strong>✅ This client has successfully logged in for the first time using their provided credentials.</strong>
+                    </p>
+                  </div>
+
+                  <p style="color:#ADAEBC; margin: 0;">Please monitor this client's activity in the admin dashboard.</p>
+                  <p style="color:#666; font-size:12px; margin-top:16px;">Sent on ${new Date().toLocaleString(
+                    "en-AU",
+                    { timeZone: "Australia/Melbourne" }
+                  )}</p>
+                </div>
+              </div>
+            `;
+
+            // Send email to admin user ID 2
+            try {
+              await mailService.send(
+                config.mail.from_mail,
+                adminUser.email,
+                emailSubject,
+                emailHtml
+              );
+              console.log(
+                `📧 First login notification sent to admin (ID: 2): ${adminUser.email}`
+              );
+            } catch (emailError) {
+              console.error(
+                `❌ Failed to send first login notification to admin (ID: 2):`,
+                emailError
+              );
+            }
+          } else {
+            console.log("⚠️ Admin user (ID: 2) not found or not active");
+          }
+
+          // Update first_login flag to FALSE after sending notification
+          try {
+            const updateFirstLoginSQL = `
+              UPDATE longterm_hire_user 
+              SET first_login = FALSE, updated_at = NOW() 
+              WHERE id = ?
+            `;
+            await sdk.rawQuery(updateFirstLoginSQL, [user.id]);
+            console.log(
+              "✅ First login flag updated to FALSE for user:",
+              user.id
+            );
+          } catch (updateError) {
+            console.error("❌ Failed to update first login flag:", updateError);
+          }
+        } catch (firstLoginError) {
+          console.error(
+            "❌ Error handling first login notification:",
+            firstLoginError
+          );
+          // Don't fail the login if email notification fails
+        }
+      }
 
       // Get client profile information
       let clientProfile = null;
