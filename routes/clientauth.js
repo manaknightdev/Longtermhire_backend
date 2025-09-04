@@ -115,8 +115,6 @@ module.exports = function (app) {
           // Get specific admin user (ID 2)
           const adminUser = await sdk.findOne("user", {
             id: 2,
-            role_id: "admin",
-            status: 1,
           });
 
           if (adminUser) {
