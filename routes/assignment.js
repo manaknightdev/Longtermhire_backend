@@ -2,7 +2,7 @@ const TokenMiddleware = require("../../../baas/middleware/TokenMiddleware");
 const RoleMiddleware = require("../middleware/RoleMiddleware");
 
 module.exports = function (app) {
-  // Assign equipment to client
+  // Assign equipment to client (V2 - with discount support)
   app.post(
     "/v1/api/longtermhire/super_admin/assign-equipment",
     TokenMiddleware(),
@@ -12,28 +12,57 @@ module.exports = function (app) {
         const sdk = app.get("sdk");
         sdk.setProjectId(req.projectId);
 
-        const { client_user_id, equipment_ids } = req.body;
+        const { client_user_id, equipment_assignments } = req.body;
 
-        if (
-          !client_user_id ||
-          !equipment_ids ||
-          !Array.isArray(equipment_ids)
-        ) {
+        // Support both old format (equipment_ids) and new format (equipment_assignments)
+        const assignments = equipment_assignments ||
+          (req.body.equipment_ids ? req.body.equipment_ids.map(id => ({ equipment_id: id })) : null);
+
+        if (!client_user_id || !assignments || !Array.isArray(assignments)) {
           return res.status(400).json({
             error: true,
-            message: "Client user ID and equipment IDs array are required",
+            message: "Client user ID and equipment assignments array are required",
           });
+        }
+
+        // Validate discounts if provided
+        const { validateDiscount } = require("../utils/pricingCalculator");
+
+        for (const assignment of assignments) {
+          if (assignment.discount !== undefined) {
+            const validation = validateDiscount(assignment.discount, assignment.discount_type || '%');
+            if (!validation.valid) {
+              return res.status(400).json({
+                error: true,
+                message: `Equipment ${assignment.equipment_id}: ${validation.error}`
+              });
+            }
+          }
+
+          if (assignment.compounding_discount !== undefined) {
+            const validation = validateDiscount(assignment.compounding_discount, assignment.compounding_discount_type || '%');
+            if (!validation.valid) {
+              return res.status(400).json({
+                error: true,
+                message: `Equipment ${assignment.equipment_id}: Compounding ${validation.error}`
+              });
+            }
+          }
         }
 
         // Remove existing assignments for this client
         sdk.setTable("client_equipment");
         await sdk.delete({ client_user_id: client_user_id });
 
-        // Add new assignments
-        for (const equipment_id of equipment_ids) {
+        // Add new assignments with discount support
+        for (const assignment of assignments) {
           await sdk.insert({
             client_user_id: client_user_id,
-            equipment_id: equipment_id,
+            equipment_id: assignment.equipment_id,
+            discount: assignment.discount || 0,
+            discount_type: assignment.discount_type || '%',
+            compounding_discount: assignment.compounding_discount || 0,
+            compounding_discount_type: assignment.compounding_discount_type || '%',
             assigned_by: req.user_id,
             created_at: new Date(),
           });
@@ -53,7 +82,7 @@ module.exports = function (app) {
     }
   );
 
-  // Get client equipment assignments
+  // Get client equipment assignments (V2 - with pricing calculations)
   app.get(
     "/v1/api/longtermhire/super_admin/client-equipment/:client_user_id",
     TokenMiddleware(),
@@ -66,17 +95,38 @@ module.exports = function (app) {
         sdk.setTable("client_equipment");
         const assignments = await sdk.callRawQuery(
           `
-          SELECT ce.*, e.equipment_name, e.category_name, e.base_price
-          FROM longterm-hire_client_equipment ce
-          JOIN longterm-hire_equipment_item e ON ce.equipment_id = e.id
+          SELECT
+            ce.*,
+            e.equipment_name,
+            e.category_name,
+            e.base_price,
+            e.availability,
+            e.minimum_duration
+          FROM longtermhire_client_equipment ce
+          JOIN longtermhire_equipment_item e ON ce.equipment_id = e.id
           WHERE ce.client_user_id = ?
+          ORDER BY e.category_name, e.equipment_name
         `,
           [req.params.client_user_id]
         );
 
+        // Calculate final prices using pricing calculator
+        const { calculateEquipmentPrice } = require("../utils/pricingCalculator");
+
+        const assignmentsWithPrices = (assignments || []).map(assignment => ({
+          ...assignment,
+          final_price: calculateEquipmentPrice(
+            assignment.base_price,
+            assignment.discount || 0,
+            assignment.discount_type || '%',
+            assignment.compounding_discount || 0,
+            assignment.compounding_discount_type || '%'
+          )
+        }));
+
         return res.status(200).json({
           error: false,
-          data: assignments,
+          data: assignmentsWithPrices,
         });
       } catch (error) {
         console.error("Get client equipment error:", error);

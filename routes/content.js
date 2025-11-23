@@ -51,7 +51,10 @@ module.exports = function (app) {
           c.created_at,
           c.updated_at,
           e.equipment_id,
+          c.updated_at,
+          e.equipment_id,
           e.equipment_name,
+          e.specs_files,
           GROUP_CONCAT(
             CASE 
               WHEN ci.id IS NOT NULL THEN
@@ -190,6 +193,108 @@ module.exports = function (app) {
         });
       } catch (error) {
         console.error("Get content error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message,
+        });
+      }
+    }
+  );
+
+  // Get content by ID
+  app.get(
+    "/v1/api/longtermhire/super_admin/content/:id",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        const contentId = req.params.id;
+
+        const contentQuery = `
+          SELECT 
+            c.id,
+            c.equipment_id as content_equipment_id,
+            c.equipment_name,
+            c.description,
+            c.banner_description,
+            c.image_url,
+            c.user_id,
+            c.created_at,
+            c.updated_at,
+            c.updated_at,
+            e.equipment_id,
+            e.specs_files,
+            e.category_id,
+            e.category_name,
+            GROUP_CONCAT(
+              CASE 
+                WHEN ci.id IS NOT NULL THEN
+                  JSON_OBJECT(
+                    'id', ci.id,
+                    'image_url', ci.image_url,
+                    'image_order', ci.image_order,
+                    'is_main', ci.is_main,
+                    'caption', ci.caption
+                  )
+                ELSE NULL
+              END ORDER BY ci.image_order ASC SEPARATOR '|||'
+            ) as images
+          FROM longtermhire_content c
+          LEFT JOIN longtermhire_equipment_item e ON c.equipment_id = e.id
+          LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
+          WHERE c.id = ?
+          GROUP BY c.id, e.id
+        `;
+
+        const content = await sdk.rawQuery(contentQuery, [contentId]);
+
+        if (!content || content.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Content not found",
+          });
+        }
+
+        const item = content[0];
+
+        // Parse images array if it exists
+        if (item.images && item.images !== "null" && item.images !== "NULL") {
+          try {
+            if (item.images.includes("|||")) {
+              const imageStrings = item.images.split("|||");
+              item.images = imageStrings
+                .map((imgStr) => {
+                  try {
+                    return JSON.parse(imgStr.trim());
+                  } catch (e) {
+                    return null;
+                  }
+                })
+                .filter(
+                  (img) =>
+                    img !== null && img.id !== null && img.image_url !== null
+                );
+            } else {
+              const parsed = JSON.parse(item.images);
+              item.images = parsed ? [parsed] : [];
+            }
+          } catch (e) {
+            console.error("Error parsing images for content:", item.id, e);
+            item.images = [];
+          }
+        } else {
+          item.images = [];
+        }
+
+        return res.status(200).json({
+          error: false,
+          data: item,
+        });
+      } catch (error) {
+        console.error("Get content by ID error:", error);
         return res.status(500).json({
           error: true,
           message: error.message,
@@ -347,8 +452,10 @@ module.exports = function (app) {
         equipment_name,
         description,
         banner_description,
+
         image_url, // Keep for backward compatibility
         images, // New field for multiple images array
+        specs_files, // New field for specs files
       } = req.body;
       const contentId = req.params.id;
       const currentTime = new Date()
@@ -389,6 +496,23 @@ module.exports = function (app) {
         currentTime,
         contentId,
       ]);
+
+      // Update specs_files in longtermhire_equipment_item if provided
+      if (specs_files !== undefined) {
+        const specsFilesValue = Array.isArray(specs_files)
+          ? JSON.stringify(specs_files)
+          : specs_files || null;
+        const updateSpecsSQL = `
+          UPDATE longtermhire_equipment_item
+          SET specs_files = ?, updated_at = ?
+          WHERE id = ?
+        `;
+        await sdk.rawQuery(updateSpecsSQL, [
+          specsFilesValue,
+          currentTime,
+          equipment_id,
+        ]);
+      }
 
       // Handle multiple images if provided
       if (images && Array.isArray(images)) {
@@ -762,7 +886,9 @@ module.exports = function (app) {
         const sdk = app.get("sdk");
         sdk.setProjectId("longtermhire");
 
-        console.log(`🔄 Setting image ${imageId} as main for content ${contentId}`);
+        console.log(
+          `🔄 Setting image ${imageId} as main for content ${contentId}`
+        );
 
         // 1. Verify content exists
         const contentCheckSQL =
@@ -843,7 +969,10 @@ module.exports = function (app) {
         const sdk = app.get("sdk");
         sdk.setProjectId("longtermhire");
 
-        console.log(`🔄 Reordering images for content ${contentId}:`, imageOrder);
+        console.log(
+          `🔄 Reordering images for content ${contentId}:`,
+          imageOrder
+        );
 
         if (!imageOrder || !Array.isArray(imageOrder)) {
           return res.status(400).json({
@@ -879,7 +1008,8 @@ module.exports = function (app) {
         if (imageExists.length !== imageOrder.length) {
           return res.status(400).json({
             error: true,
-            message: "One or more images not found or do not belong to this content",
+            message:
+              "One or more images not found or do not belong to this content",
           });
         }
 
@@ -899,7 +1029,9 @@ module.exports = function (app) {
           await sdk.rawQuery(updateOrderSQL, [i, currentTime, imageId]);
         }
 
-        console.log(`✅ Images reordered successfully for content ${contentId}`);
+        console.log(
+          `✅ Images reordered successfully for content ${contentId}`
+        );
 
         return res.status(200).json({
           error: false,

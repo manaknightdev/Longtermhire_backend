@@ -88,6 +88,9 @@ CREATE TABLE IF NOT EXISTS `longtermhire_equipment_item` (
   `base_price` VARCHAR(512) NOT NULL,
   `minimum_duration` VARCHAR(512) DEFAULT '3 Months',
   `availability` BOOLEAN DEFAULT '1' NOT NULL,
+  `unavailability_due_month` VARCHAR(50) NULL DEFAULT NULL COMMENT 'Expected availability month/year (e.g., January 2026)',
+  `specs_files` TEXT NULL DEFAULT NULL,
+  `position` INT DEFAULT 0,
   `user_id` INT NOT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -195,3 +198,15 @@ CREATE TABLE IF NOT EXISTS `longtermhire_chat_activity_logs` (
   INDEX `idx_activity_type` (`activity_type`)
 );
 
+
+-- Maintenance Periods Table
+CREATE TABLE IF NOT EXISTS `longtermhire_equipment_maintenance` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `equipment_id` INT NOT NULL,
+  `start_date` DATE NOT NULL,
+  `end_date` DATE NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`equipment_id`) REFERENCES `longtermhire_equipment_item`(`id`) ON DELETE CASCADE,
+  INDEX `idx_equipment_maintenance` (`equipment_id`, `start_date`, `end_date`)
+);

@@ -4,13 +4,18 @@ CREATE TABLE IF NOT EXISTS longtermhire_chat_messages (
   from_user_id INT NOT NULL,
   to_user_id INT NOT NULL,
   message TEXT NOT NULL,
-  message_type ENUM('text', 'equipment_request', 'system') DEFAULT 'text',
+  message_type ENUM('text', 'equipment_request', 'system', 'image', 'pdf', 'file') DEFAULT 'text',
   equipment_id VARCHAR(512) NULL,
   equipment_name VARCHAR(255) NULL,
+  attachment_url VARCHAR(512) NULL COMMENT 'URL to uploaded file (images, PDFs, etc)',
+  attachment_type VARCHAR(100) NULL COMMENT 'MIME type of attachment',
+  attachment_name VARCHAR(255) NULL COMMENT 'Original filename',
+  attachment_size INT NULL COMMENT 'File size in bytes',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   read_at TIMESTAMP NULL,
   INDEX idx_users (from_user_id, to_user_id),
-  INDEX idx_created (created_at)
+  INDEX idx_created (created_at),
+  INDEX idx_message_type (message_type)
 );
 
 -- Chat conversations table (create without foreign keys first)

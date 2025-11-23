@@ -371,6 +371,7 @@ module.exports = function (app) {
           c.user_id,
           c.client_name,
           c.company_name,
+          c.company_id,
           c.phone,
           c.created_at,
           c.updated_at,
@@ -851,4 +852,48 @@ module.exports = function (app) {
       }
     }
   );
+
+  // ============================================================================
+  // V2: Get CMS content for client frontend
+  // ============================================================================
+  // Public endpoint - no auth required
+  // Returns CMS content and company info from admin profile
+  app.get("/v1/api/longtermhire/client/cms-content", async (req, res) => {
+    try {
+      console.log("GET /v1/api/longtermhire/client/cms-content called");
+
+      const sdk = app.get("sdk");
+      sdk.setProjectId("longtermhire");
+
+      // Get admin user (user_id = 1) data
+      const adminUser = await sdk.findOne("user", { id: 1 });
+
+      if (!adminUser) {
+        return res.status(404).json({
+          error: true,
+          message: "Admin profile not found",
+        });
+      }
+
+      // Parse user data JSON
+      const userData = JSON.parse(adminUser?.data ?? "{}");
+
+      return res.status(200).json({
+        error: false,
+        data: {
+          company_name: userData?.company_name || "",
+          contact_info: userData?.contact_info || "",
+          company_address: userData?.company_address || "",
+          company_logo: userData?.company_logo || "",
+          cms_content: userData?.cms_content || "",
+        },
+      });
+    } catch (error) {
+      console.error("Get CMS content error:", error);
+      return res.status(500).json({
+        error: true,
+        message: error.message || "Internal server error",
+      });
+    }
+  });
 };

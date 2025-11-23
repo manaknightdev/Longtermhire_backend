@@ -1,0 +1,182 @@
+[
+  {
+    "id": 1,
+    "user1_id": 1,
+    "user2_id": 5,
+    "last_message_id": 27,
+    "last_message_text": "I would like to request the CAT 950M Loader for 3 months.",
+    "unread_count": 0,
+    "updated_at": "2025-07-18 18:44:36"
+  },
+  {
+    "id": 8,
+    "user1_id": 2,
+    "user2_id": 5,
+    "last_message_id": 82,
+    "last_message_text": "okay fine",
+    "unread_count": 0,
+    "updated_at": "2025-07-30 19:17:10"
+  },
+  {
+    "id": 46,
+    "user1_id": 2,
+    "user2_id": 2,
+    "last_message_id": 48,
+    "last_message_text": "w",
+    "unread_count": 0,
+    "updated_at": "2025-07-24 14:37:01"
+  },
+  {
+    "id": 71,
+    "user1_id": 2,
+    "user2_id": 10,
+    "last_message_id": 73,
+    "last_message_text": "I would like to request the 31 for 3 months.",
+    "unread_count": 0,
+    "updated_at": "2025-07-29 19:01:08"
+  },
+  {
+    "id": 81,
+    "user1_id": 2,
+    "user2_id": 12,
+    "last_message_id": 87,
+    "last_message_text": "Thank you for your message. Our team is currently offline, but we\'ll respond within 24 hours during business hours.",
+    "unread_count": 0,
+    "updated_at": "2025-07-30 21:28:54"
+  },
+  {
+    "id": 86,
+    "user1_id": 2,
+    "user2_id": 13,
+    "last_message_id": 159,
+    "last_message_text": "I would like to request the EXCAVATOR 1 for 3 months.",
+    "unread_count": 0,
+    "updated_at": "2025-08-14 15:49:30"
+  },
+  {
+    "id": 90,
+    "user1_id": 2,
+    "user2_id": 14,
+    "last_message_id": 100,
+    "last_message_text": "yep",
+    "unread_count": 0,
+    "updated_at": "2025-08-03 22:07:14"
+  },
+  {
+    "id": 99,
+    "user1_id": 2,
+    "user2_id": 9,
+    "last_message_id": 147,
+    "last_message_text": "Isudu",
+    "unread_count": 0,
+    "updated_at": "2025-08-05 21:10:41"
+  },
+  {
+    "id": 111,
+    "user1_id": 2,
+    "user2_id": 11,
+    "last_message_id": 149,
+    "last_message_text": "hello this is admin",
+    "unread_count": 0,
+    "updated_at": "2025-08-05 21:11:43"
+  },
+  {
+    "id": 125,
+    "user1_id": 2,
+    "user2_id": 16,
+    "last_message_id": 137,
+    "last_message_text": "hehe",
+    "unread_count": 0,
+    "updated_at": "2025-08-04 20:12:53"
+  },
+  {
+    "id": 142,
+    "user1_id": 2,
+    "user2_id": 18,
+    "last_message_id": 144,
+    "last_message_text": "I would like to request the Backhoes test a for 3 months.",
+    "unread_count": 0,
+    "updated_at": "2025-08-05 20:52:19"
+  },
+  {
+    "id": 148,
+    "user1_id": 2,
+    "user2_id": 15,
+    "last_message_id": 150,
+    "last_message_text": "Hello test, how can I help you today?",
+    "unread_count": 0,
+    "updated_at": "2025-08-05 21:22:43"
+  },
+  {
+    "id": 149,
+    "user1_id": 2,
+    "user2_id": 20,
+    "last_message_id": 151,
+    "last_message_text": "I would like to request the 213123123 for 3 months.",
+    "unread_count": 0,
+    "updated_at": "2025-08-06 20:30:26"
+  },
+  {
+    "id": 150,
+    "user1_id": 2,
+    "user2_id": 19,
+    "last_message_id": null,
+    "last_message_text": "Conversation started",
+    "unread_count": 0,
+    "updated_at": "2025-08-06 20:30:49"
+  },
+  {
+    "id": 151,
+    "user1_id": 2,
+    "user2_id": 21,
+    "last_message_id": null,
+    "last_message_text": "Conversation started",
+    "unread_count": 0,
+    "updated_at": "2025-08-06 21:17:37"
+  },
+  {
+    "id": 153,
+    "user1_id": 2,
+    "user2_id": 23,
+    "last_message_id": null,
+    "last_message_text": "Conversation started",
+    "unread_count": 0,
+    "updated_at": "2025-08-07 13:57:16"
+  },
+  {
+    "id": 155,
+    "user1_id": 2,
+    "user2_id": 26,
+    "last_message_id": 163,
+    "last_message_text": "uell9e\\",
+    "unread_count": 0,
+    "updated_at": "2025-08-20 16:50:26"
+  },
+  {
+    "id": 156,
+    "user1_id": 2,
+    "user2_id": 24,
+    "last_message_id": 154,
+    "last_message_text": "I would like to request the 213123123 for 3 months.",
+    "unread_count": 0,
+    "updated_at": "2025-08-07 16:59:30"
+  },
+  {
+    "id": 158,
+    "user1_id": 2,
+    "user2_id": 27,
+    "last_message_id": 157,
+    "last_message_text": "Hi welcome3",
+    "unread_count": 0,
+    "updated_at": "2025-08-07 21:19:35"
+  },
+  {
+    "id": 164,
+    "user1_id": 2,
+    "user2_id": 28,
+    "last_message_id": 171,
+    "last_message_text": "I would like to request the BACKBONES for 3 months.",
+    "unread_count": 0,
+    "updated_at": "2025-08-22 19:22:15"
+  }
+]

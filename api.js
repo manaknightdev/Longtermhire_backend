@@ -9,6 +9,7 @@ const assignmentRoutes = require("./routes/assignment");
 const pricingRoutes = require("./routes/pricing");
 const requestRoutes = require("./routes/request");
 const contentRoutes = require("./routes/content");
+const companyRoutes = require("./routes/company");
 
 module.exports = function (app) {
   // Initialize all route modules
@@ -19,4 +20,5 @@ module.exports = function (app) {
   pricingRoutes(app);
   requestRoutes(app);
   contentRoutes(app);
+  companyRoutes(app);
 };

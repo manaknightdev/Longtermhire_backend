@@ -92,13 +92,17 @@ class ChatNotificationService {
    * @param {Object} senderData - Sender information
    * @param {Object} recipientData - Recipient information
    * @param {Object} sdk - The SDK instance
+   * @param {string} messageText - Optional message text to include in email (only for text messages)
+   * @param {string} messageType - Message type ('text', 'image', 'pdf', 'file', etc.)
    */
   async sendChatNotification(
     fromUserId,
     toUserId,
     senderData,
     recipientData,
-    sdk
+    sdk,
+    messageText = null,
+    messageType = "text"
   ) {
     try {
       console.log(
@@ -138,6 +142,12 @@ class ChatNotificationService {
       // Create HTML email content based on sender type
       let htmlContent, emailSubject;
 
+      // Determine if we should show message text (only for text messages, exclude attachments)
+      const shouldShowMessageText = messageText && messageType === "text";
+      const messagePreview = shouldShowMessageText
+        ? messageText.substring(0, 200) + (messageText.length > 200 ? "..." : "")
+        : null;
+
       if (isFromClient) {
         // Client to Admin email template
         emailSubject = `New Message from ${
@@ -146,11 +156,11 @@ class ChatNotificationService {
         htmlContent = `
           <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
             <div style="background-color: #1F1F20; padding: 30px; border-radius: 8px; border: 2px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-              
+
               <!-- Header with Logo -->
               <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
-                <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
-                     alt="Longterm Hire Logo" 
+                <img src="https://longtermhire.manaknightdigital.com/login-logo.png"
+                     alt="Longterm Hire Logo"
                      style="width: 240px; height: 135px; margin-bottom: 15px;">
                 <h1 style="color: #E5E5E5; margin: 0; font-size: 24px; font-weight: 400;">💬 New Client Message</h1>
                 <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 16px;">A client has sent you a new message</p>
@@ -162,7 +172,7 @@ class ChatNotificationService {
                 <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
                   You have received a new message from a client at <strong>Long Term Hire</strong>.
                 </p>
-                
+
                 <div style="background: #292A2B; padding: 15px; border-radius: 4px; border: 1px solid #444444; margin: 15px 0;">
                   <p style="color: #E5E5E5; margin: 0; font-size: 14px;"><strong>From Client:</strong> ${
                     senderData.client_name || senderData.first_name || "Unknown"
@@ -171,7 +181,26 @@ class ChatNotificationService {
                     "en-AU",
                     { timeZone: "Australia/Melbourne" }
                   )}</p>
+                  ${
+                    messageType !== "text"
+                      ? `<p style="color: #ADAEBC; margin: 5px 0 0 0; font-size: 14px;"><strong>Type:</strong> ${
+                          messageType === "image"
+                            ? "Image"
+                            : messageType === "pdf"
+                            ? "PDF Document"
+                            : "File Attachment"
+                        }</p>`
+                      : ""
+                  }
                 </div>
+                ${
+                  shouldShowMessageText
+                    ? `<div style="background: #1C1C1C; padding: 15px; border-radius: 4px; border-left: 4px solid #FDCE06; margin-top: 15px;">
+                    <p style="color: #E5E5E5; margin: 0; font-size: 14px; line-height: 1.5;"><strong>Message Preview:</strong></p>
+                    <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 13px; line-height: 1.5; font-style: italic;">"${messagePreview}"</p>
+                  </div>`
+                    : ""
+                }
               </div>
 
               <!-- Login Button -->
@@ -201,16 +230,16 @@ class ChatNotificationService {
           </div>
         `;
       } else {
-        // Admin to Client email template (unchanged)
+        // Admin to Client email template
         emailSubject = "New Message from Long Term Hire Team";
         htmlContent = `
           <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
             <div style="background-color: #1F1F20; padding: 30px; border-radius: 8px; border: 2px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-              
+
               <!-- Header with Logo -->
               <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
-                <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
-                     alt="Longterm Hire Logo" 
+                <img src="https://longtermhire.manaknightdigital.com/login-logo.png"
+                     alt="Longterm Hire Logo"
                      style="width: 240px; height: 135px; margin-bottom: 15px;">
                 <h1 style="color: #E5E5E5; margin: 0; font-size: 24px; font-weight: 400;">💬 New Message Available</h1>
                 <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 16px;">You have a new message from our team</p>
@@ -226,7 +255,7 @@ class ChatNotificationService {
                 <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
                   You have received a new message from our team at <strong>Long Term Hire</strong>.
                 </p>
-                
+
                 <div style="background: #292A2B; padding: 15px; border-radius: 4px; border: 1px solid #444444; margin: 15px 0;">
                   <p style="color: #E5E5E5; margin: 0; font-size: 14px;"><strong>From:</strong> ${
                     senderData.client_name || senderData.first_name || "User"
@@ -235,7 +264,26 @@ class ChatNotificationService {
                     "en-AU",
                     { timeZone: "Australia/Melbourne" }
                   )}</p>
+                  ${
+                    messageType !== "text"
+                      ? `<p style="color: #ADAEBC; margin: 5px 0 0 0; font-size: 14px;"><strong>Type:</strong> ${
+                          messageType === "image"
+                            ? "Image"
+                            : messageType === "pdf"
+                            ? "PDF Document"
+                            : "File Attachment"
+                        }</p>`
+                      : ""
+                  }
                 </div>
+                ${
+                  shouldShowMessageText
+                    ? `<div style="background: #1C1C1C; padding: 15px; border-radius: 4px; border-left: 4px solid #FDCE06; margin-top: 15px;">
+                    <p style="color: #E5E5E5; margin: 0; font-size: 14px; line-height: 1.5;"><strong>Message Preview:</strong></p>
+                    <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 13px; line-height: 1.5; font-style: italic;">"${messagePreview}"</p>
+                  </div>`
+                    : ""
+                }
               </div>
 
               <!-- Login Button -->

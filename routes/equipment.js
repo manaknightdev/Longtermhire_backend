@@ -54,9 +54,10 @@ module.exports = function (app) {
         const equipmentQuery = `
         SELECT 
           e.*,
-          c.description,
-          c.banner_description,
-          c.image_url as content_image,
+          e.specs_files,
+          MAX(c.description) as description,
+          MAX(c.banner_description) as banner_description,
+          MAX(c.image_url) as content_image,
           CASE WHEN ci.id IS NOT NULL THEN 
             GROUP_CONCAT(
               JSON_OBJECT(
@@ -73,7 +74,7 @@ module.exports = function (app) {
         LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
         ${whereClause}
         GROUP BY e.id
-        ORDER BY e.category_name, e.position ASC, e.equipment_name
+        ORDER BY e.category_name ASC, e.position ASC, e.equipment_name ASC
         LIMIT ? OFFSET ?
       `;
 
@@ -147,6 +148,103 @@ module.exports = function (app) {
     }
   );
 
+  // Get equipment by ID
+  app.get(
+    "/v1/api/longtermhire/super_admin/equipment/:id",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        const equipmentId = req.params.id;
+
+        const equipmentQuery = `
+          SELECT 
+            e.*,
+            e.specs_files,
+            MAX(c.description) as description,
+            MAX(c.banner_description) as banner_description,
+            MAX(c.image_url) as content_image,
+            CASE WHEN ci.id IS NOT NULL THEN 
+              GROUP_CONCAT(
+                JSON_OBJECT(
+                  'id', ci.id,
+                  'image_url', ci.image_url,
+                  'image_order', ci.image_order,
+                  'is_main', ci.is_main,
+                  'caption', ci.caption
+                ) ORDER BY ci.image_order ASC SEPARATOR '|||'
+              )
+            ELSE NULL END as images
+          FROM longtermhire_equipment_item e
+          LEFT JOIN longtermhire_content c ON e.id = c.equipment_id
+          LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
+          WHERE e.id = ?
+          GROUP BY e.id
+        `;
+
+        const maintenanceQuery = `
+          SELECT start_date, end_date 
+          FROM longtermhire_equipment_maintenance 
+          WHERE equipment_id = ? 
+          ORDER BY start_date ASC
+        `;
+
+        const equipment = await sdk.rawQuery(equipmentQuery, [equipmentId]);
+
+        if (!equipment || equipment.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Equipment not found"
+          });
+        }
+
+        const maintenancePeriods = await sdk.rawQuery(maintenanceQuery, [equipmentId]);
+
+        const item = equipment[0];
+        item.maintenance_periods = maintenancePeriods;
+
+        // Parse images array if it exists
+        if (item.images) {
+          try {
+            const imageStrings = item.images.split("|||");
+            const parsedImages = imageStrings
+              .map((imgStr) => {
+                try {
+                  return JSON.parse(imgStr.trim());
+                } catch (e) {
+                  return null;
+                }
+              })
+              .filter(
+                (img) =>
+                  img !== null && img.id !== null && img.image_url !== null
+              );
+            item.images = parsedImages;
+          } catch (e) {
+            console.error("Error parsing images for equipment:", item.id, e);
+            item.images = [];
+          }
+        } else {
+          item.images = [];
+        }
+
+        return res.status(200).json({
+          error: false,
+          data: item
+        });
+      } catch (error) {
+        console.error("Get equipment by ID error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message
+        });
+      }
+    }
+  );
+
   // Add equipment
   app.post(
     "/v1/api/longtermhire/super_admin/equipment",
@@ -168,8 +266,11 @@ module.exports = function (app) {
           basePrice,
           minimumDuration,
           availability,
+          unavailability_due_month,
           description,
           position,
+          specs_file,
+          maintenance_periods,
         } = req.body;
 
         // Get a valid user ID (use the current admin user ID 2)
@@ -185,8 +286,8 @@ module.exports = function (app) {
         // Insert equipment into database using raw SQL
         const insertSQL = `
         INSERT INTO longtermhire_equipment_item
-        (category_id, category_name, equipment_id, equipment_name, base_price, minimum_duration, availability, position, user_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (category_id, category_name, equipment_id, equipment_name, base_price, minimum_duration, availability, unavailability_due_month, position, specs_files, user_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
         const result = await sdk.rawQuery(insertSQL, [
@@ -197,13 +298,54 @@ module.exports = function (app) {
           basePrice,
           `${minimumDuration} Months`,
           availability !== undefined ? availability : true,
+          unavailability_due_month || null,
           position || 0,
+          specsFilesValue,
           userId,
           currentTime,
           currentTime,
         ]);
 
         console.log("Equipment created with ID:", result.insertId);
+
+        // Insert maintenance periods if any
+        if (maintenance_periods && Array.isArray(maintenance_periods) && maintenance_periods.length > 0) {
+          const maintenanceValues = maintenance_periods.map(period => [
+            result.insertId,
+            period.start_date,
+            period.end_date
+          ]);
+
+          // Construct bulk insert query
+          const maintenancePlaceholders = maintenanceValues.map(() => "(?, ?, ?)").join(", ");
+          const maintenanceSQL = `
+            INSERT INTO longtermhire_equipment_maintenance (equipment_id, start_date, end_date)
+            VALUES ${maintenancePlaceholders}
+          `;
+
+          // Flatten the values array
+          const flattenedValues = maintenanceValues.reduce((acc, val) => acc.concat(val), []);
+
+          await sdk.rawQuery(maintenanceSQL, flattenedValues);
+        }
+
+        // Upsert description to longtermhire_content
+        if (description) {
+          const contentCheckSQL = "SELECT id FROM longtermhire_content WHERE equipment_id = ?";
+          const contentExists = await sdk.rawQuery(contentCheckSQL, [result.insertId]);
+
+          if (contentExists.length > 0) {
+            await sdk.rawQuery(
+              "UPDATE longtermhire_content SET description = ?, updated_at = ? WHERE id = ?",
+              [description, currentTime, contentExists[0].id]
+            );
+          } else {
+            await sdk.rawQuery(
+              "INSERT INTO longtermhire_content (equipment_id, equipment_name, description, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+              [result.insertId, equipmentName, description, userId, currentTime, currentTime]
+            );
+          }
+        }
 
         return res.status(200).json({
           error: false,
@@ -217,6 +359,7 @@ module.exports = function (app) {
             base_price: basePrice,
             minimum_duration: `${minimumDuration} Months`,
             availability: availability !== undefined ? availability : true,
+            maintenance_periods: maintenance_periods || [],
           },
         });
       } catch (error) {
@@ -244,15 +387,34 @@ module.exports = function (app) {
 
         const {
           categoryId,
+          category_id,
           category,
+          category_name,
           equipmentId,
+          equipment_id,
           equipmentName,
+          equipment_name,
           basePrice,
+          base_price,
           minimumDuration,
+          minimum_duration,
           availability,
+          unavailability_due_month,
           description,
           position,
+          specs_files,
+          maintenance_periods,
         } = req.body;
+
+        // Map snake_case to camelCase if needed
+        const finalCategoryId = categoryId || category_id;
+        const finalCategoryName = category || category_name;
+        const finalEquipmentId = equipmentId || equipment_id;
+        const finalEquipmentName = equipmentName || equipment_name;
+        const finalBasePrice = basePrice || base_price;
+        const finalMinimumDuration = minimumDuration || minimum_duration;
+
+        const specsFilesValue = Array.isArray(specs_files) ? JSON.stringify(specs_files) : (specs_files || null);
 
         const equipmentIdParam = req.params.id;
         const currentTime = new Date()
@@ -271,23 +433,75 @@ module.exports = function (app) {
             base_price = ?,
             minimum_duration = ?,
             availability = ?,
+            unavailability_due_month = ?,
             position = ?,
+            specs_files = ?,
             updated_at = ?
           WHERE id = ?
         `;
 
         await sdk.rawQuery(updateSQL, [
-          categoryId,
-          category,
-          equipmentId,
-          equipmentName,
-          basePrice,
-          minimumDuration || "3 Months",
+          finalCategoryId,
+          finalCategoryName,
+          finalEquipmentId,
+          finalEquipmentName,
+          finalBasePrice,
+          finalMinimumDuration || "3 Months",
           availability !== undefined ? availability : 1,
+          unavailability_due_month || null,
           position || 0,
+          specsFilesValue,
           currentTime,
           equipmentIdParam,
         ]);
+
+        // Update maintenance periods
+        // First delete existing periods
+        await sdk.rawQuery("DELETE FROM longtermhire_equipment_maintenance WHERE equipment_id = ?", [equipmentIdParam]);
+
+        // Insert new periods if any
+        if (maintenance_periods && Array.isArray(maintenance_periods) && maintenance_periods.length > 0) {
+          const maintenanceValues = maintenance_periods.map(period => [
+            equipmentIdParam,
+            period.start_date,
+            period.end_date
+          ]);
+
+          // Construct bulk insert query
+          const maintenancePlaceholders = maintenanceValues.map(() => "(?, ?, ?)").join(", ");
+          const maintenanceSQL = `
+            INSERT INTO longtermhire_equipment_maintenance (equipment_id, start_date, end_date)
+            VALUES ${maintenancePlaceholders}
+          `;
+
+          // Flatten the values array
+          const flattenedValues = maintenanceValues.reduce((acc, val) => acc.concat(val), []);
+
+          await sdk.rawQuery(maintenanceSQL, flattenedValues);
+        }
+
+        // Upsert description to longtermhire_content
+        if (description !== undefined) {
+          const contentCheckSQL = "SELECT id FROM longtermhire_content WHERE equipment_id = ?";
+          const contentExists = await sdk.rawQuery(contentCheckSQL, [equipmentIdParam]);
+
+          if (contentExists.length > 0) {
+            await sdk.rawQuery(
+              "UPDATE longtermhire_content SET description = ?, updated_at = ? WHERE id = ?",
+              [description, currentTime, contentExists[0].id]
+            );
+          } else {
+            // Need user_id for insert, fetch from equipment or default
+            const equipmentUserSQL = "SELECT user_id FROM longtermhire_equipment_item WHERE id = ?";
+            const equipmentUser = await sdk.rawQuery(equipmentUserSQL, [equipmentIdParam]);
+            const userId = equipmentUser.length > 0 ? equipmentUser[0].user_id : 2;
+
+            await sdk.rawQuery(
+              "INSERT INTO longtermhire_content (equipment_id, equipment_name, description, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+              [equipmentIdParam, finalEquipmentName, description, userId, currentTime, currentTime]
+            );
+          }
+        }
 
         return res.status(200).json({
           error: false,

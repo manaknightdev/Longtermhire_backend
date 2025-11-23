@@ -2,6 +2,8 @@ const TokenMiddleware = require("../../../baas/middleware/TokenMiddleware");
 const RoleMiddleware = require("../middleware/RoleMiddleware");
 const chatService = require("../services/ChatService");
 const ChatNotificationService = require("../services/ChatNotificationService");
+const UploadService = require("../../../baas/services/UploadService");
+const { getLocalPath } = require("../../../baas/services/UtilService");
 
 module.exports = function (app) {
   console.log("Loading chat routes...");
@@ -10,6 +12,81 @@ module.exports = function (app) {
   chatService.initialize().catch((error) => {
     console.error("Failed to initialize ChatService:", error);
   });
+
+  // Upload file for chat (images, PDFs, documents)
+  app.post(
+    "/v1/api/longtermhire/chat/upload",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin", "member"]),
+    function (req, res, next) {
+      // Determine upload method based on config
+      const config = app.get("configuration");
+      const uploadMiddleware = config.upload_type === "s3"
+        ? UploadService.s3_upload().single("file")
+        : UploadService.local_upload().single("file");
+
+      uploadMiddleware(req, res, async function (err) {
+        if (err) {
+          console.error("File upload error:", err);
+          return res.status(500).json({
+            error: true,
+            message: "File upload failed: " + err.message,
+          });
+        }
+
+        try {
+          if (!req.file) {
+            return res.status(400).json({
+              error: true,
+              message: "No file uploaded",
+            });
+          }
+
+          const sdk = app.get("sdk");
+          sdk.setProjectId("longtermhire");
+
+          // Get file URL based on upload type
+          const fileUrl = config.upload_type === "s3"
+            ? req.file.location
+            : getLocalPath(req.file.path);
+
+          // Determine message type based on MIME type
+          let messageType = "file";
+          if (req.file.mimetype.startsWith("image/")) {
+            messageType = "image";
+          } else if (req.file.mimetype === "application/pdf") {
+            messageType = "pdf";
+          }
+
+          console.log("✅ Chat file uploaded:", {
+            url: fileUrl,
+            type: messageType,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            originalname: req.file.originalname,
+          });
+
+          return res.status(200).json({
+            error: false,
+            message: "File uploaded successfully",
+            data: {
+              url: fileUrl,
+              type: messageType,
+              mimetype: req.file.mimetype,
+              size: req.file.size,
+              filename: req.file.originalname,
+            },
+          });
+        } catch (error) {
+          console.error("Process upload error:", error);
+          return res.status(500).json({
+            error: true,
+            message: error.message || "Internal server error",
+          });
+        }
+      });
+    }
+  );
 
   // Set user as online
   app.post(
@@ -160,14 +237,13 @@ module.exports = function (app) {
         let params;
 
         if (userRole === "super_admin") {
-          // Admin sees all conversations
+          // Admin sees all conversations with unread count for messages TO admin
           conversationsSQL = `
             SELECT
               c.id,
               c.user1_id,
               c.user2_id,
               c.last_message_text,
-              c.unread_count,
               c.updated_at,
               COALESCE(cl1.client_name, u1.email) as user1_name,
               COALESCE(cl2.client_name, u2.email) as user2_name,
@@ -178,7 +254,17 @@ module.exports = function (app) {
               CASE
                 WHEN c.user1_id = ? THEN c.user2_id
                 ELSE c.user1_id
-              END as other_user_id
+              END as other_user_id,
+              (
+                SELECT COUNT(*)
+                FROM longtermhire_chat_messages m
+                WHERE m.to_user_id = ?
+                AND m.read_at IS NULL
+                AND (
+                  (m.from_user_id = c.user1_id AND m.to_user_id = c.user2_id) OR
+                  (m.from_user_id = c.user2_id AND m.to_user_id = c.user1_id)
+                )
+              ) as unread_count
             FROM longtermhire_chat_conversations c
             LEFT JOIN longtermhire_user u1 ON c.user1_id = u1.id
             LEFT JOIN longtermhire_user u2 ON c.user2_id = u2.id
@@ -188,7 +274,7 @@ module.exports = function (app) {
             GROUP BY c.id
             ORDER BY c.updated_at DESC
           `;
-          params = [userId, userId, userId, userId];
+          params = [userId, userId, userId, userId, userId];
         } else {
           // Client only sees conversations with admin
           conversationsSQL = `
@@ -281,6 +367,10 @@ module.exports = function (app) {
             m.message_type,
             m.equipment_id,
             m.equipment_name,
+            m.attachment_url,
+            m.attachment_type,
+            m.attachment_name,
+            m.attachment_size,
             m.created_at,
             m.read_at,
             COALESCE(cl.client_name, u.email) as from_user_name
@@ -370,7 +460,15 @@ module.exports = function (app) {
         sdk.setProjectId("longtermhire");
 
         const fromUserId = req.user_id;
-        const { to_user_id, message, message_type = "text" } = req.body;
+        const {
+          to_user_id,
+          message,
+          message_type = "text",
+          attachment_url,
+          attachment_type,
+          attachment_name,
+          attachment_size,
+        } = req.body;
 
         if (!to_user_id || !message) {
           return res.status(400).json({
@@ -379,11 +477,11 @@ module.exports = function (app) {
           });
         }
 
-        // Insert original message into database
+        // Insert original message into database with attachment support
         const insertSQL = `
-          INSERT INTO longtermhire_chat_messages 
-          (from_user_id, to_user_id, message, message_type, created_at)
-          VALUES (?, ?, ?, ?, NOW())
+          INSERT INTO longtermhire_chat_messages
+          (from_user_id, to_user_id, message, message_type, attachment_url, attachment_type, attachment_name, attachment_size, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `;
 
         const result = await sdk.rawQuery(insertSQL, [
@@ -391,6 +489,10 @@ module.exports = function (app) {
           to_user_id,
           message,
           message_type,
+          attachment_url || null,
+          attachment_type || null,
+          attachment_name || null,
+          attachment_size || null,
         ]);
         const messageId = result.insertId;
 
@@ -482,7 +584,9 @@ module.exports = function (app) {
                 to_user_id, // client user ID (recipient)
                 adminData, // admin data (sender)
                 clientData[0], // client data (recipient)
-                sdk
+                sdk,
+                message, // message text
+                message_type // message type
               );
               console.log("📧 Client notification result:", result);
             } else {
@@ -538,7 +642,9 @@ module.exports = function (app) {
                   first_name: "Admin",
                   last_name: "Team",
                 }, // admin data (recipient)
-                sdk
+                sdk,
+                message, // message text
+                message_type // message type
               );
               console.log("📧 Admin notification result:", result);
             } else {
@@ -1046,8 +1152,7 @@ module.exports = function (app) {
               affectedRows: result.affectedRows || 0,
             });
             console.log(
-              `✅ Query executed successfully, affected rows: ${
-                result.affectedRows || 0
+              `✅ Query executed successfully, affected rows: ${result.affectedRows || 0
               }`
             );
           } catch (queryError) {
@@ -1270,6 +1375,173 @@ module.exports = function (app) {
         return res.status(500).json({
           error: true,
           message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
+
+  // ==================== V2 UNREAD MESSAGE TRACKING ====================
+
+  /**
+   * Get unread message count for admin
+   * GET /v1/api/longtermhire/super_admin/chat/unread-count
+   */
+  app.get(
+    "/v1/api/longtermhire/super_admin/chat/unread-count",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        // Get unread count by conversation
+        const unreadQuery = `
+          SELECT
+            c.id as conversation_id,
+            c.client_user_id,
+            cl.client_name,
+            cl.company_name,
+            COUNT(m.id) as unread_count
+          FROM longtermhire_chat_conversations c
+          LEFT JOIN longtermhire_client cl ON cl.user_id = c.client_user_id
+          LEFT JOIN longtermhire_chat_messages m ON m.conversation_id = c.id
+            AND m.is_read_by_admin = FALSE
+            AND m.sender_id = c.client_user_id
+          GROUP BY c.id, c.client_user_id, cl.client_name, cl.company_name
+          HAVING unread_count > 0
+          ORDER BY unread_count DESC
+        `;
+
+        const unreadByConversation = await sdk.rawQuery(unreadQuery);
+
+        // Calculate total unread
+        const totalUnread = (unreadByConversation || []).reduce(
+          (sum, conv) => sum + (parseInt(conv.unread_count) || 0),
+          0
+        );
+
+        return res.status(200).json({
+          error: false,
+          data: {
+            unread_by_conversation: unreadByConversation || [],
+            total_unread: totalUnread
+          }
+        });
+
+      } catch (error) {
+        console.error("Get unread count error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Failed to get unread count"
+        });
+      }
+    }
+  );
+
+  /**
+   * Mark messages as read
+   * PUT /v1/api/longtermhire/super_admin/chat/mark-read
+   */
+  app.put(
+    "/v1/api/longtermhire/super_admin/chat/mark-read",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        const { conversation_id, message_ids } = req.body;
+
+        if (!conversation_id) {
+          return res.status(400).json({
+            error: true,
+            message: "Conversation ID is required"
+          });
+        }
+
+        let markReadQuery;
+        let params;
+
+        if (message_ids && Array.isArray(message_ids) && message_ids.length > 0) {
+          // Mark specific messages as read
+          markReadQuery = `
+            UPDATE longtermhire_chat_messages
+            SET is_read_by_admin = TRUE
+            WHERE conversation_id = ?
+              AND id IN (${message_ids.join(',')})
+              AND is_read_by_admin = FALSE
+          `;
+          params = [conversation_id];
+        } else {
+          // Mark all messages in conversation as read
+          markReadQuery = `
+            UPDATE longtermhire_chat_messages
+            SET is_read_by_admin = TRUE
+            WHERE conversation_id = ?
+              AND is_read_by_admin = FALSE
+          `;
+          params = [conversation_id];
+        }
+
+        await sdk.rawQuery(markReadQuery, params);
+
+        return res.status(200).json({
+          error: false,
+          message: "Messages marked as read successfully"
+        });
+
+      } catch (error) {
+        console.error("Mark messages as read error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Failed to mark messages as read"
+        });
+      }
+    }
+  );
+
+  /**
+   * Get unread status for specific conversation
+   * GET /v1/api/longtermhire/super_admin/chat/conversation/:conversationId/unread
+   */
+  app.get(
+    "/v1/api/longtermhire/super_admin/chat/conversation/:conversationId/unread",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        const { conversationId } = req.params;
+
+        // Get unread message IDs
+        const unreadQuery = `
+          SELECT id, created_at, message_type
+          FROM longtermhire_chat_messages
+          WHERE conversation_id = ?
+            AND is_read_by_admin = FALSE
+          ORDER BY created_at ASC
+        `;
+
+        const unreadMessages = await sdk.rawQuery(unreadQuery, [conversationId]);
+
+        return res.status(200).json({
+          error: false,
+          data: {
+            conversation_id: parseInt(conversationId),
+            unread_count: unreadMessages ? unreadMessages.length : 0,
+            unread_message_ids: unreadMessages ? unreadMessages.map(m => m.id) : []
+          }
+        });
+
+      } catch (error) {
+        console.error("Get conversation unread status error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Failed to get unread status"
         });
       }
     }

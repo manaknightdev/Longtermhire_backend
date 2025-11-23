@@ -36,6 +36,13 @@ const handleGetProfile = async (req, res, sdk) => {
         last_name: preferences?.last_name ?? userData?.last_name,
         phone: preferences?.phone ?? userData?.phone,
         photo: preferences?.photo ?? userData?.photo,
+        // V2: Company fields
+        company_name: userData?.company_name,
+        contact_info: userData?.contact_info,
+        company_address: userData?.company_address,
+        company_logo: userData?.company_logo,
+        // V2: CMS content for client frontend
+        cms_content: userData?.cms_content,
         data: userData,
       },
     });
@@ -75,6 +82,13 @@ const handleUpdateProfile = async (req, res, sdk) => {
       last_name: payload?.last_name ?? userData?.last_name,
       phone: payload?.phone ?? userData?.phone,
       photo: payload?.photo ?? userData?.photo,
+      // V2: Company fields
+      company_name: payload?.company_name !== undefined ? payload.company_name : userData?.company_name,
+      contact_info: payload?.contact_info !== undefined ? payload.contact_info : userData?.contact_info,
+      company_address: payload?.company_address !== undefined ? payload.company_address : userData?.company_address,
+      company_logo: payload?.company_logo !== undefined ? payload.company_logo : userData?.company_logo,
+      // V2: CMS content
+      cms_content: payload?.cms_content !== undefined ? payload.cms_content : userData?.cms_content,
     };
 
     const updateData = {

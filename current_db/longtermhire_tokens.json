@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "user_id": 1,
+    "token": "random_string_0",
+    "code": "random_string_0",
+    "type": 0,
+    "data": "{\\"key\\": \\"value\\"}",
+    "status": 0,
+    "created_at": "2025-07-14 00:00:00",
+    "updated_at": "2025-07-14 00:00:00",
+    "expired_at": "2025-07-14 00:00:00"
+  },
+  {
+    "id": 2,
+    "user_id": 1,
+    "token": "random_string_1",
+    "code": "random_string_1",
+    "type": 0,
+    "data": "{\\"key\\": \\"value\\"}",
+    "status": 0,
+    "created_at": "2025-07-14 00:00:00",
+    "updated_at": "2025-07-14 00:00:00",
+    "expired_at": "2025-07-14 00:00:00"
+  },
+  {
+    "id": 3,
+    "user_id": 1,
+    "token": "random_string_2",
+    "code": "random_string_2",
+    "type": 0,
+    "data": "{\\"key\\": \\"value\\"}",
+    "status": 0,
+    "created_at": "2025-07-14 00:00:00",
+    "updated_at": "2025-07-14 00:00:00",
+    "expired_at": "2025-07-14 00:00:00"
+  }
+]
