@@ -865,4 +865,42 @@ module.exports = function (app) {
       }
     }
   );
+
+  // Get all companies for quote dropdown
+  app.get(
+    "/v1/api/longtermhire/super_admin/companies/list",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        const companiesSQL = `
+          SELECT 
+            c.id,
+            c.company_name,
+            c.company_address,
+            c.company_logo,
+            u.email as owner_email
+          FROM longtermhire_company c
+          LEFT JOIN longtermhire_user u ON c.owner_user_id = u.id
+          ORDER BY c.company_name ASC
+        `;
+
+        const companies = await sdk.rawQuery(companiesSQL);
+
+        return res.status(200).json({
+          error: false,
+          data: companies || []
+        });
+      } catch (error) {
+        console.error("Get companies list error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Failed to fetch companies"
+        });
+      }
+    }
+  );
 };

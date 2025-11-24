@@ -15,6 +15,89 @@ module.exports = function (app) {
 
                 console.log("🔍 Getting equipment for client user:", req.user_id);
 
+                // Get category filter from query params
+                const categoryFilter = req.query['categories[]'];
+                const selectedCategories = categoryFilter
+                    ? (Array.isArray(categoryFilter) ? categoryFilter : [categoryFilter])
+                    : [];
+
+                console.log("📂 Category filter:", selectedCategories);
+
+                // First, get the user's company_id from company_member table
+                const companyQuery = `
+                    SELECT company_id
+                    FROM longtermhire_company_member
+                    WHERE user_id = ?
+                    LIMIT 1
+                `;
+                const companyResult = await sdk.rawQuery(companyQuery, [req.user_id]);
+
+                let whereClause;
+                let queryParams;
+                let userRole = null;
+
+                if (companyResult && companyResult.length > 0) {
+                    // User is a company member - fetch all equipment for their company
+                    const companyId = companyResult[0].company_id;
+                    console.log(`👥 User is member of company ${companyId}, fetching company equipment`);
+
+                    // Get user's role in the company
+                    const roleQuery = `
+                        SELECT role 
+                        FROM longtermhire_company_member 
+                        WHERE user_id = ? AND company_id = ?
+                        LIMIT 1
+                    `;
+                    const roleResult = await sdk.rawQuery(roleQuery, [req.user_id, companyId]);
+                    if (roleResult && roleResult.length > 0) {
+                        userRole = roleResult[0].role;
+                        console.log(`👔 User role: ${userRole}`);
+                    }
+
+                    // Build WHERE clause based on role
+                    if (userRole === 'Supervisor') {
+                        // Supervisors only see equipment with maintenance or unavailable
+                        whereClause = `
+                            WHERE ce.client_user_id IN (
+                                SELECT user_id
+                                FROM longtermhire_company_member
+                                WHERE company_id = ?
+                            )
+                            AND (
+                                EXISTS (
+                                    SELECT 1
+                                    FROM longtermhire_equipment_maintenance em
+                                    WHERE em.equipment_id = e.id
+                                )
+                                OR e.availability = 0
+                            )
+                        `;
+                    } else {
+                        // Engineers and Company Owners see all equipment
+                        whereClause = `
+                            WHERE ce.client_user_id IN (
+                                SELECT user_id
+                                FROM longtermhire_company_member
+                                WHERE company_id = ?
+                            )
+                        `;
+                    }
+                    queryParams = [companyId];
+                } else {
+                    // User is not a company member - fetch only their personal equipment
+                    console.log(`👤 User is not a company member, fetching personal equipment`);
+                    whereClause = "WHERE ce.client_user_id = ?";
+                    queryParams = [req.user_id];
+                }
+
+                // Add category filtering if categories are selected
+                if (selectedCategories.length > 0) {
+                    const categoryPlaceholders = selectedCategories.map(() => '?').join(',');
+                    whereClause += ` AND e.category_name IN (${categoryPlaceholders})`;
+                    queryParams.push(...selectedCategories);
+                    console.log("🔍 Filtering by categories:", selectedCategories);
+                }
+
                 // Get equipment assigned to this client with content, images, and pricing
                 const equipment = await sdk.rawQuery(
                     `
@@ -56,11 +139,11 @@ module.exports = function (app) {
           LEFT JOIN longtermhire_content_images ci ON c.id = ci.content_id
           LEFT JOIN longtermhire_client_pricing cp ON cp.client_user_id = ce.client_user_id
           LEFT JOIN longtermhire_pricing_package pp ON cp.pricing_package_id = pp.id
-          WHERE ce.client_user_id = ?
+          ${whereClause}
           GROUP BY e.id, c.id, pp.id
           ORDER BY e.category_name, e.position ASC, e.equipment_name
         `,
-                    [req.user_id]
+                    queryParams
                 );
 
                 console.log(
@@ -521,15 +604,16 @@ module.exports = function (app) {
 
                 console.log(`🔍 Getting quote config for equipment ${equipmentId}, user ${req.user_id}`);
 
-                // Verify user has access to this equipment
+                // Get company_id from company_member table (not from user table)
                 const accessQuery = `
-                    SELECT u.company_id
+                    SELECT cm.company_id
                     FROM longtermhire_client_equipment ce
-                    JOIN longtermhire_user u ON ce.client_user_id = u.id
+                    JOIN longtermhire_company_member cm ON ce.client_user_id = cm.user_id
                     WHERE ce.client_user_id = ? AND ce.equipment_id = ?
                     LIMIT 1
                 `;
                 const accessResult = await sdk.rawQuery(accessQuery, [req.user_id, equipmentId]);
+                console.log(`🔍 Access query result:`, accessResult);
 
                 if (!accessResult || accessResult.length === 0) {
                     return res.status(404).json({
@@ -539,6 +623,7 @@ module.exports = function (app) {
                 }
 
                 const companyId = accessResult[0].company_id;
+                console.log(`🏢 User's company_id: ${companyId}`);
 
                 // Get quote configuration for this company
                 const quoteQuery = `
@@ -556,19 +641,17 @@ module.exports = function (app) {
                         q.status,
                         q.created_at
                     FROM longtermhire_quote q
-                    WHERE q.id = (
-                        SELECT quote_id 
-                        FROM longtermhire_company 
-                        WHERE id = ?
-                        LIMIT 1
-                    )
-                    AND q.status = 'Active'
+                    WHERE q.company_id = ? AND q.status = 'Active'
+                    ORDER BY q.created_at DESC
                     LIMIT 1
                 `;
 
+                console.log(`🔍 Fetching quote for company_id: ${companyId}`);
                 const quoteConfig = await sdk.rawQuery(quoteQuery, [companyId]);
+                console.log(`📋 Quote config result:`, quoteConfig);
 
                 if (!quoteConfig || quoteConfig.length === 0) {
+                    console.log(`⚠️ No quote found for company ${companyId}, returning defaults`);
                     // Return default configuration if no quote found
                     return res.status(200).json({
                         error: false,

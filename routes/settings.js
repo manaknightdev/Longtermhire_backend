@@ -8,7 +8,7 @@ module.exports = function (app) {
     app.get(
         "/v1/api/longtermhire/settings",
         TokenMiddleware(),
-        RoleMiddleware(["super_admin"]),
+        RoleMiddleware(["super_admin", "member"]),
         async (req, res) => {
             try {
                 const sdk = app.get("sdk");
