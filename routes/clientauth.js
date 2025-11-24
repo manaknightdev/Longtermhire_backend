@@ -156,9 +156,8 @@ module.exports = function (app) {
                     <p style="color: #E5E5E5; margin: 0;">
                       <strong style="color:#FDCE06;">Client Name:</strong> ${clientName}<br/>
                       <strong style="color:#FDCE06;">Company:</strong> ${companyName}<br/>
-                      <strong style="color:#FDCE06;">Email:</strong> ${
-                        user.email
-                      }<br/>
+                      <strong style="color:#FDCE06;">Email:</strong> ${user.email
+              }<br/>
                       <strong style="color:#FDCE06;">Login Time:</strong> ${loginTime}<br/>
                      
                     </p>
@@ -172,9 +171,9 @@ module.exports = function (app) {
 
                   <p style="color:#ADAEBC; margin: 0;">Please monitor this client's activity in the admin dashboard.</p>
                   <p style="color:#666; font-size:12px; margin-top:16px;">Sent on ${new Date().toLocaleString(
-                    "en-AU",
-                    { timeZone: "Australia/Melbourne" }
-                  )}</p>
+                "en-AU",
+                { timeZone: "Australia/Melbourne" }
+              )}</p>
                 </div>
               </div>
             `;
@@ -259,12 +258,25 @@ module.exports = function (app) {
         // Don't fail the login if logging fails
       }
 
+      // Get company roles
+      let companyRoles = [];
+      try {
+        const roles = await sdk.rawQuery(
+          "SELECT company_id, role FROM longtermhire_company_member WHERE user_id = ?",
+          [user.id]
+        );
+        companyRoles = roles;
+      } catch (error) {
+        console.log("⚠️ Error fetching company roles:", error);
+      }
+
       return res.status(200).json({
         error: false,
         access_token: accessToken,
         token: accessToken, // For compatibility with frontend
         user_id: user.id,
         role: user.role_id,
+        company_roles: companyRoles,
         email: user.email,
         client_profile: clientProfile,
         expire_at: 60 * 60 * 12,

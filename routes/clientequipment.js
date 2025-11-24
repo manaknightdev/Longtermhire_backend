@@ -39,17 +39,16 @@ module.exports = function (app) {
             pp.description as package_description,
             pp.discount_type as package_discount_type,
             pp.discount_value as package_discount_value,
-            ce.custom_discount_type,
-            ce.custom_discount_value,
+            ce.custom_base_price,
+            ce.discount,
+            ce.discount_type,
             ce.compounding_discount_type,
-            ce.compounding_discount_value,
+            ce.compounding_discount,
             e.minimum_duration,
             CASE
-              WHEN ce.custom_discount_type = 'percentage' THEN e.base_price - (e.base_price * ce.custom_discount_value / 100)
-              WHEN ce.custom_discount_type = 'fixed' THEN e.base_price - ce.custom_discount_value
-              WHEN pp.discount_type = 0 THEN e.base_price - (e.base_price * pp.discount_value / 100)
-              WHEN pp.discount_type = 1 THEN e.base_price - pp.discount_value
-              ELSE e.base_price
+              WHEN ce.discount_type = '%' THEN COALESCE(ce.custom_base_price, e.base_price) - (COALESCE(ce.custom_base_price, e.base_price) * ce.discount / 100)
+              WHEN ce.discount_type = '$' THEN COALESCE(ce.custom_base_price, e.base_price) - ce.discount
+              ELSE COALESCE(ce.custom_base_price, e.base_price)
             END as discounted_price
           FROM longtermhire_client_equipment ce
           JOIN longtermhire_equipment_item e ON ce.equipment_id = e.id
@@ -107,10 +106,13 @@ module.exports = function (app) {
                     let compounding_discount_value = 0;
                     let discount_source = null;
 
-                    if (item.custom_discount_type && item.custom_discount_value) {
+                    // Use custom base price if available
+                    const base_price = item.custom_base_price ? parseFloat(item.custom_base_price) : parseFloat(item.base_price);
+
+                    if (item.discount > 0) {
                         // Use equipment-specific custom discount (highest priority)
-                        discount_type = item.custom_discount_type;
-                        discount_value = parseFloat(item.custom_discount_value);
+                        discount_type = item.discount_type === '%' ? 'percentage' : 'fixed';
+                        discount_value = parseFloat(item.discount);
                         discount_source = "equipment_specific";
                     } else if (
                         item.package_discount_type !== null &&
@@ -124,9 +126,9 @@ module.exports = function (app) {
                     }
 
                     // Get compounding discount if exists
-                    if (item.compounding_discount_type && item.compounding_discount_value) {
-                        compounding_discount_type = item.compounding_discount_type;
-                        compounding_discount_value = parseFloat(item.compounding_discount_value);
+                    if (item.compounding_discount > 0) {
+                        compounding_discount_type = item.compounding_discount_type === '%' ? 'percentage' : 'fixed';
+                        compounding_discount_value = parseFloat(item.compounding_discount);
                     }
 
                     // Process images data
@@ -175,14 +177,17 @@ module.exports = function (app) {
                         name: item.equipment_name,
                         equipment_name: item.equipment_name,
                         category_name: item.category_name,
-                        base_price: parseFloat(item.base_price),
+                        category_name: item.category_name,
+                        base_price: base_price,
                         discounted_price: parseFloat(
-                            item.discounted_price || item.base_price
+                            item.discounted_price || base_price
                         ),
                         discount_type: discount_type,
                         discount_value: discount_value,
+                        discount: discount_value, // Map for frontend compatibility
                         compounding_discount_type: compounding_discount_type,
                         compounding_discount_value: compounding_discount_value,
+                        compounding_discount: compounding_discount_value, // Map for frontend compatibility
                         discount_source: discount_source,
                         minimum_duration: item.minimum_duration,
                         availability: item.availability,
@@ -497,6 +502,186 @@ module.exports = function (app) {
                 return res.status(500).json({
                     error: true,
                     message: error.message || "Internal server error",
+                });
+            }
+        }
+    );
+
+    // Get quote configuration for a specific equipment
+    app.get(
+        "/v1/api/longtermhire/client/equipment/:equipmentId/quote-config",
+        TokenMiddleware(),
+        RoleMiddleware(["member"]),
+        async (req, res) => {
+            try {
+                const sdk = app.get("sdk");
+                sdk.setProjectId("longtermhire");
+
+                const { equipmentId } = req.params;
+
+                console.log(`🔍 Getting quote config for equipment ${equipmentId}, user ${req.user_id}`);
+
+                // Verify user has access to this equipment
+                const accessQuery = `
+                    SELECT u.company_id
+                    FROM longtermhire_client_equipment ce
+                    JOIN longtermhire_user u ON ce.client_user_id = u.id
+                    WHERE ce.client_user_id = ? AND ce.equipment_id = ?
+                    LIMIT 1
+                `;
+                const accessResult = await sdk.rawQuery(accessQuery, [req.user_id, equipmentId]);
+
+                if (!accessResult || accessResult.length === 0) {
+                    return res.status(404).json({
+                        error: true,
+                        message: "Equipment not found for this user"
+                    });
+                }
+
+                const companyId = accessResult[0].company_id;
+
+                // Get quote configuration for this company
+                const quoteQuery = `
+                    SELECT 
+                        q.id,
+                        q.quote_id,
+                        q.company_name,
+                        q.company_email,
+                        q.company_address,
+                        q.company_logo,
+                        q.quote_expires_after,
+                        q.produce_quote_for,
+                        q.gst_percentage,
+                        q.terms_of_hire,
+                        q.status,
+                        q.created_at
+                    FROM longtermhire_quote q
+                    WHERE q.id = (
+                        SELECT quote_id 
+                        FROM longtermhire_company 
+                        WHERE id = ?
+                        LIMIT 1
+                    )
+                    AND q.status = 'Active'
+                    LIMIT 1
+                `;
+
+                const quoteConfig = await sdk.rawQuery(quoteQuery, [companyId]);
+
+                if (!quoteConfig || quoteConfig.length === 0) {
+                    // Return default configuration if no quote found
+                    return res.status(200).json({
+                        error: false,
+                        data: {
+                            company_name: "Long Term Hire",
+                            company_email: "",
+                            company_address: "",
+                            company_logo: null,
+                            quote_expires_after: 7,
+                            produce_quote_for: 12,
+                            gst_percentage: 15,
+                            terms_of_hire: "Standard Long Term Hire Terms & Conditions apply.",
+                            is_default: true
+                        }
+                    });
+                }
+
+                return res.status(200).json({
+                    error: false,
+                    data: {
+                        ...quoteConfig[0],
+                        is_default: false
+                    }
+                });
+
+            } catch (error) {
+                console.error("Get quote config error:", error);
+                return res.status(500).json({
+                    error: true,
+                    message: error.message || "Internal server error"
+                });
+            }
+        }
+    );
+
+    // Get specification files for a specific equipment
+    app.get(
+        "/v1/api/longtermhire/client/equipment/:equipmentId/specs",
+        TokenMiddleware(),
+        RoleMiddleware(["member"]),
+        async (req, res) => {
+            try {
+                const sdk = app.get("sdk");
+                sdk.setProjectId("longtermhire");
+
+                const { equipmentId } = req.params;
+
+                console.log(`🔍 Getting specs for equipment ${equipmentId}, user ${req.user_id}`);
+
+                // Verify user has access to this equipment
+                const accessQuery = `
+                    SELECT ce.id
+                    FROM longtermhire_client_equipment ce
+                    WHERE ce.client_user_id = ? AND ce.equipment_id = ?
+                    LIMIT 1
+                `;
+                const accessResult = await sdk.rawQuery(accessQuery, [req.user_id, equipmentId]);
+
+                if (!accessResult || accessResult.length === 0) {
+                    return res.status(404).json({
+                        error: true,
+                        message: "Equipment not found for this user"
+                    });
+                }
+
+                // Get specs files
+                const specsQuery = `
+                    SELECT 
+                        e.id,
+                        e.equipment_name,
+                        e.specs_files
+                    FROM longtermhire_equipment_item e
+                    WHERE e.id = ?
+                `;
+
+                const specsResult = await sdk.rawQuery(specsQuery, [equipmentId]);
+
+                if (!specsResult || specsResult.length === 0) {
+                    return res.status(404).json({
+                        error: true,
+                        message: "Equipment not found"
+                    });
+                }
+
+                const equipment = specsResult[0];
+                let specsFiles = [];
+
+                // Parse specs_files if it exists
+                if (equipment.specs_files) {
+                    try {
+                        specsFiles = typeof equipment.specs_files === 'string'
+                            ? JSON.parse(equipment.specs_files)
+                            : equipment.specs_files;
+                    } catch (e) {
+                        console.error("Error parsing specs_files:", e);
+                        specsFiles = [];
+                    }
+                }
+
+                return res.status(200).json({
+                    error: false,
+                    data: {
+                        equipment_id: equipment.id,
+                        equipment_name: equipment.equipment_name,
+                        specs_files: specsFiles
+                    }
+                });
+
+            } catch (error) {
+                console.error("Get specs error:", error);
+                return res.status(500).json({
+                    error: true,
+                    message: error.message || "Internal server error"
                 });
             }
         }

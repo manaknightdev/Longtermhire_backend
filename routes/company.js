@@ -2,7 +2,9 @@ const TokenMiddleware = require("../../../baas/middleware/TokenMiddleware");
 const RoleMiddleware = require("../middleware/RoleMiddleware");
 const CompanyModel = require("../models/company");
 const CompanyMemberModel = require("../models/company_member");
+
 const bcrypt = require("bcryptjs");
+const MailService = require("../../../baas/services/MailService");
 
 module.exports = function (app) {
   console.log("Loading company routes...");
@@ -260,7 +262,7 @@ module.exports = function (app) {
           const generatedUsername =
             username ||
             member_email.split("@")[0] +
-              Math.random().toString(36).substring(2, 6);
+            Math.random().toString(36).substring(2, 6);
           const generatedPassword =
             password || Math.random().toString(36).substring(2, 10);
           const hashedPassword = await bcrypt.hash(generatedPassword, 10);
@@ -308,6 +310,86 @@ module.exports = function (app) {
           member_phone,
           role,
         });
+
+        // Send invitation email
+        try {
+          const config = app.get("configuration");
+          const mailService = new MailService(config);
+          const loginUrl = "https://www.longtermhire.com/client/login";
+          const plainPassword = password || (userId === userResult?.insertId ? generatedPassword : "Use your existing password");
+
+          // Create HTML email template
+          const htmlContent = `
+            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
+              <div style="background-color: #1F1F20; padding: 30px; border-radius: 8px; border: 2px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                
+                <!-- Header with Logo -->
+                <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
+                  <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
+                       alt="" 
+                       style="width: 240px; height: 135px; margin-bottom: 15px;">
+                  <h1 style="color: #E5E5E5; margin: 0; font-size: 28px; font-weight: 400;">Welcome to Long Term Hire</h1>
+                  <p style="color: #ADAEBC; margin: 10px 0 0 0; font-size: 16px;">You have been invited to join a team!</p>
+                </div>
+
+                <!-- Welcome Message -->
+                <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
+                  <h3 style="color: #E5E5E5; margin-top: 0; font-size: 20px; font-weight: 400;">👋 Hello ${member_name}!</h3>
+                  <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
+                    You have been invited to your company <strong>${company.company_name}</strong> by <strong>Long Term Hire</strong>.
+                    You have been assigned the role of <strong>${role}</strong>.
+                  </p>
+                </div>
+
+                <!-- Login Credentials -->
+                <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
+                  <h3 style="color: #E5E5E5; margin-top: 0; font-size: 18px; font-weight: 400;">🔐 Your Login Credentials</h3>
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                      <td style="padding: 12px 0; color: #E5E5E5; font-weight: 400; font-size: 14px;">Email:</td>
+                      <td style="padding: 12px 0; color: #E5E5E5; font-family: monospace; background: #292A2B; padding: 8px 12px; border-radius: 4px; border: 1px solid #444444;">${member_email}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 12px 0; color: #E5E5E5; font-weight: 400; font-size: 14px;">Password:</td>
+                      <td style="padding: 12px 0; color: #E5E5E5; font-family: monospace; background: #292A2B; padding: 8px 12px; border-radius: 4px; border: 1px solid #444444;">${plainPassword}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 12px 0; color: #E5E5E5; font-weight: 400; font-size: 14px;">Login URL:</td>
+                      <td style="padding: 12px 0;"><a href="${loginUrl}" style="color: #FDCE06; text-decoration: none; font-size: 14px;">${loginUrl}</a></td>
+                    </tr>
+                  </table>
+                </div>
+
+                <!-- Login Button -->
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${loginUrl}"
+                     style="background: #FDCE06; color: #1F1F20; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; border: 1px solid #FDCE06;">
+                    🚀 Login to Your Account
+                  </a>
+                </div>
+
+                <!-- Footer -->
+                <div style="border-top: 1px solid #333333; padding-top: 20px; margin-top: 30px; text-align: center;">
+                  <p style="color: #ADAEBC; font-size: 14px; margin: 0;">
+                    Need assistance? Contact our support team <b>admin@longtermhire.com</b>.<br>
+                    <small style="color: #666666;">Invitation sent on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</small>
+                  </p>
+                </div>
+              </div>
+            </div>
+          `;
+
+          await mailService.send(
+            config.mail?.from_mail || "noreply@longtermhire.com",
+            member_email,
+            `You have been invited to join ${company.company_name} on Long Term Hire`,
+            htmlContent
+          );
+          console.log("📧 Invitation email sent to:", member_email);
+        } catch (emailError) {
+          console.error("Failed to send invitation email:", emailError);
+          // Don't fail the request if email fails, just log it
+        }
 
         return res.status(201).json({
           error: false,
@@ -768,9 +850,8 @@ module.exports = function (app) {
 
         return res.status(200).json({
           error: false,
-          message: `Discount applied to ${
-            result.affectedRows || 0
-          } equipment items successfully`,
+          message: `Discount applied to ${result.affectedRows || 0
+            } equipment items successfully`,
           data: {
             affected_rows: result.affectedRows || 0,
           },
