@@ -1,4 +1,5 @@
 const TokenMiddleware = require("../../../baas/middleware/TokenMiddleware");
+const RoleMiddleware = require("../middleware/RoleMiddleware");
 const MailService = require("../../../baas/services/MailService");
 const bcrypt = require("bcryptjs");
 
@@ -896,4 +897,66 @@ module.exports = function (app) {
       });
     }
   });
+
+  // ============================================================================
+  // V2: Get company settings for logged-in client
+  // ============================================================================
+  // Returns company-specific settings including ad_text for sticky note/banner
+  app.get(
+    "/v1/api/longtermhire/client/company-settings",
+    TokenMiddleware(),
+    RoleMiddleware(["member"]),
+    async (req, res) => {
+      try {
+        console.log("GET /v1/api/longtermhire/client/company-settings called");
+        console.log("User ID:", req.user_id);
+
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        // Get client's company information
+        const clientQuery = `
+          SELECT c.company_name, c.company_id, co.ad_text, co.ad_text_destination
+          FROM longtermhire_client c
+          LEFT JOIN longtermhire_company co ON c.company_id = co.id
+          WHERE c.user_id = ?
+          LIMIT 1
+        `;
+
+        const clientResult = await sdk.rawQuery(clientQuery, [req.user_id]);
+
+        if (!clientResult || clientResult.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "Client not found",
+          });
+        }
+
+        const clientData = clientResult[0];
+
+        // Get company logo from admin settings
+        const adminUser = await sdk.findOne("user", { id: 1 });
+        const userData = JSON.parse(adminUser?.data ?? "{}");
+
+        return res.status(200).json({
+          error: false,
+          data: {
+            company_id: clientData.company_id,
+            company_name: clientData.company_name,
+            ad_text: clientData.ad_text || "",
+            ad_text_destination:
+              clientData.ad_text_destination || "To Sticky Note",
+            company_logo: userData?.company_logo || "",
+          },
+          message: "Company settings retrieved successfully",
+        });
+      } catch (error) {
+        console.error("Get company settings error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Internal server error",
+        });
+      }
+    }
+  );
 };

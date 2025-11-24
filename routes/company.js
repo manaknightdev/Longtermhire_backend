@@ -227,6 +227,22 @@ module.exports = function (app) {
           });
         }
 
+        // If assigning Company Owner role, check if one already exists
+        if (role === "Company Owner") {
+          const existingOwner = await sdk.rawQuery(
+            `SELECT id, member_name FROM longtermhire_company_member 
+             WHERE company_id = ? AND role = 'Company Owner' LIMIT 1`,
+            [companyId]
+          );
+
+          if (existingOwner && existingOwner.length > 0) {
+            return res.status(400).json({
+              error: true,
+              message: `Only one Company Owner is allowed per company. ${existingOwner[0].member_name} is already the Company Owner.`,
+            });
+          }
+        }
+
         // Check if email already exists
         sdk.setTable("user");
         const existingUser = await sdk.rawQuery(
@@ -244,7 +260,7 @@ module.exports = function (app) {
           const generatedUsername =
             username ||
             member_email.split("@")[0] +
-            Math.random().toString(36).substring(2, 6);
+              Math.random().toString(36).substring(2, 6);
           const generatedPassword =
             password || Math.random().toString(36).substring(2, 10);
           const hashedPassword = await bcrypt.hash(generatedPassword, 10);
@@ -357,6 +373,96 @@ module.exports = function (app) {
         return res.status(500).json({
           error: true,
           message: error.message || "Failed to delete team member",
+        });
+      }
+    }
+  );
+
+  /**
+   * Update team member role
+   * PUT /v1/api/longtermhire/super_admin/company/:companyId/member/:memberId/role
+   */
+  app.put(
+    "/v1/api/longtermhire/super_admin/company/:companyId/member/:memberId/role",
+    TokenMiddleware(),
+    RoleMiddleware(["super_admin"]),
+    async (req, res) => {
+      try {
+        const sdk = app.get("sdk");
+        sdk.setProjectId("longtermhire");
+
+        const { companyId, memberId } = req.params;
+        const { role } = req.body;
+
+        // Validation
+        if (!role) {
+          return res.status(400).json({
+            error: true,
+            message: "Role is required",
+          });
+        }
+
+        // Validate role value
+        const validRoles = ["Company Owner", "Engineer", "Supervisor"];
+        if (!validRoles.includes(role)) {
+          return res.status(400).json({
+            error: true,
+            message:
+              "Invalid role. Must be one of: Company Owner, Engineer, Supervisor",
+          });
+        }
+
+        const companyMemberModel = new CompanyMemberModel(sdk);
+
+        // Check if member exists
+        const member = await companyMemberModel.findById(memberId);
+        if (!member) {
+          return res.status(404).json({
+            error: true,
+            message: "Team member not found",
+          });
+        }
+
+        // Prevent changing Company Owner role
+        if (member.role === "Company Owner") {
+          return res.status(400).json({
+            error: true,
+            message:
+              "Cannot change the role of a Company Owner. This role is permanent.",
+          });
+        }
+
+        // If assigning Company Owner role, check if one already exists
+        if (role === "Company Owner") {
+          const existingOwner = await sdk.rawQuery(
+            `SELECT id, member_name FROM longtermhire_company_member 
+             WHERE company_id = ? AND role = 'Company Owner' AND id != ? LIMIT 1`,
+            [companyId, memberId]
+          );
+
+          if (existingOwner && existingOwner.length > 0) {
+            return res.status(400).json({
+              error: true,
+              message: `Only one Company Owner is allowed per company. ${existingOwner[0].member_name} is already the Company Owner.`,
+            });
+          }
+        }
+
+        // Update role
+        await sdk.rawQuery(
+          `UPDATE longtermhire_company_member SET role = ?, updated_at = NOW() WHERE id = ?`,
+          [role, memberId]
+        );
+
+        return res.status(200).json({
+          error: false,
+          message: "Role updated successfully",
+        });
+      } catch (error) {
+        console.error("Update team member role error:", error);
+        return res.status(500).json({
+          error: true,
+          message: error.message || "Failed to update role",
         });
       }
     }
@@ -637,8 +743,14 @@ module.exports = function (app) {
         let whereClause = `WHERE client_user_id IN (${userIdPlaceholders})`;
         const whereValues = [...userIds];
 
-        if (equipment_ids && Array.isArray(equipment_ids) && equipment_ids.length > 0) {
-          const equipmentIdPlaceholders = equipment_ids.map(() => "?").join(",");
+        if (
+          equipment_ids &&
+          Array.isArray(equipment_ids) &&
+          equipment_ids.length > 0
+        ) {
+          const equipmentIdPlaceholders = equipment_ids
+            .map(() => "?")
+            .join(",");
           whereClause += ` AND equipment_id IN (${equipmentIdPlaceholders})`;
           whereValues.push(...equipment_ids);
         }
@@ -656,7 +768,9 @@ module.exports = function (app) {
 
         return res.status(200).json({
           error: false,
-          message: `Discount applied to ${result.affectedRows || 0} equipment items successfully`,
+          message: `Discount applied to ${
+            result.affectedRows || 0
+          } equipment items successfully`,
           data: {
             affected_rows: result.affectedRows || 0,
           },

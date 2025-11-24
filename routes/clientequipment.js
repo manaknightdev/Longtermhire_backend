@@ -3,21 +3,21 @@ const RoleMiddleware = require("../middleware/RoleMiddleware");
 const MailService = require("../../../baas/services/MailService");
 
 module.exports = function (app) {
-  // Get client's assigned equipment with pricing and discounts
-  app.get(
-    "/v1/api/longtermhire/client/equipment",
-    TokenMiddleware(),
-    RoleMiddleware(["member"]),
-    async (req, res) => {
-      try {
-        const sdk = app.get("sdk");
-        sdk.setProjectId("longtermhire");
+    // Get client's assigned equipment with pricing and discounts
+    app.get(
+        "/v1/api/longtermhire/client/equipment",
+        TokenMiddleware(),
+        RoleMiddleware(["member"]),
+        async (req, res) => {
+            try {
+                const sdk = app.get("sdk");
+                sdk.setProjectId("longtermhire");
 
-        console.log("🔍 Getting equipment for client user:", req.user_id);
+                console.log("🔍 Getting equipment for client user:", req.user_id);
 
-        // Get equipment assigned to this client with content, images, and pricing
-        const equipment = await sdk.rawQuery(
-          `
+                // Get equipment assigned to this client with content, images, and pricing
+                const equipment = await sdk.rawQuery(
+                    `
           SELECT
             e.*,
             c.description as content_description,
@@ -41,6 +41,8 @@ module.exports = function (app) {
             pp.discount_value as package_discount_value,
             ce.custom_discount_type,
             ce.custom_discount_value,
+            ce.compounding_discount_type,
+            ce.compounding_discount_value,
             e.minimum_duration,
             CASE
               WHEN ce.custom_discount_type = 'percentage' THEN e.base_price - (e.base_price * ce.custom_discount_value / 100)
@@ -59,164 +61,200 @@ module.exports = function (app) {
           GROUP BY e.id, c.id, pp.id
           ORDER BY e.category_name, e.position ASC, e.equipment_name
         `,
-          [req.user_id]
-        );
+                    [req.user_id]
+                );
 
-        console.log(
-          `✅ Found ${equipment.length} equipment items for client (including unavailable)`
-        );
+                console.log(
+                    `✅ Found ${equipment.length} equipment items for client (including unavailable)`
+                );
 
-        // Debug: Log first equipment item to see what we're getting
-        if (equipment.length > 0) {
-          console.log("🔍 Debug - First equipment item:", {
-            id: equipment[0].id,
-            equipment_id: equipment[0].equipment_id,
-            equipment_name: equipment[0].equipment_name,
-            availability: equipment[0].availability,
-            content_description: equipment[0].content_description,
-            content_image: equipment[0].content_image,
-            content_images: equipment[0].content_images,
-            content_images_length: equipment[0].content_images
-              ? equipment[0].content_images.length
-              : 0,
-          });
-        }
+                // Get maintenance periods for all equipment
+                const equipmentIds = equipment.map(item => item.id);
+                let maintenancePeriods = [];
 
-        // Debug: Log all equipment items to see content_images and availability
-        console.log("🔍 Debug - All equipment items:");
-        equipment.forEach((item, index) => {
-          console.log(
-            `  ${index + 1}. ${item.equipment_name} (${
-              item.equipment_id
-            }) - Available: ${item.availability} - content_images = "${
-              item.content_images
-            }"`
-          );
-        });
+                if (equipmentIds.length > 0) {
+                    const placeholders = equipmentIds.map(() => '?').join(',');
+                    maintenancePeriods = await sdk.rawQuery(
+                        `SELECT equipment_id, start_date, end_date 
+             FROM longtermhire_equipment_maintenance 
+             WHERE equipment_id IN (${placeholders})
+             ORDER BY start_date ASC`,
+                        equipmentIds
+                    );
+                }
 
-        // Process equipment data to determine discount information and parse images
-        const processedEquipment = equipment.map((item) => {
-          // Determine discount type and value with proper priority:
-          // 1. Equipment-specific custom discount (highest priority)
-          // 2. Pricing package discount (fallback)
-          // 3. No discount (base price)
-          let discount_type = null;
-          let discount_value = 0;
-          let discount_source = null;
+                // Group maintenance periods by equipment_id
+                const maintenanceByEquipment = maintenancePeriods.reduce((acc, period) => {
+                    if (!acc[period.equipment_id]) {
+                        acc[period.equipment_id] = [];
+                    }
+                    acc[period.equipment_id].push({
+                        start_date: period.start_date,
+                        end_date: period.end_date
+                    });
+                    return acc;
+                }, {});
 
-          if (item.custom_discount_type && item.custom_discount_value) {
-            // Use equipment-specific custom discount (highest priority)
-            discount_type = item.custom_discount_type;
-            discount_value = parseFloat(item.custom_discount_value);
-            discount_source = "equipment_specific";
-          } else if (
-            item.package_discount_type !== null &&
-            item.package_discount_value
-          ) {
-            // Use pricing package discount (fallback)
-            discount_type =
-              item.package_discount_type === 0 ? "percentage" : "fixed";
-            discount_value = parseFloat(item.package_discount_value);
-            discount_source = "pricing_package";
-          }
+                // Process equipment data to determine discount information and parse images
+                const processedEquipment = equipment.map((item) => {
+                    // Determine discount type and value with proper priority:
+                    // 1. Equipment-specific custom discount (highest priority)
+                    // 2. Pricing package discount (fallback)
+                    // 3. No discount (base price)
+                    let discount_type = null;
+                    let discount_value = 0;
+                    let compounding_discount_type = null;
+                    let compounding_discount_value = 0;
+                    let discount_source = null;
 
-          // Process images data
-          let images = [];
-          if (item.content_images && item.content_images !== "null") {
-            try {
-              const imageStrings = item.content_images.split("|||");
-              images = imageStrings
-                .map((imgStr) => {
-                  try {
-                    const parsed = JSON.parse(imgStr);
-                    return parsed && parsed.id !== null ? parsed : null;
-                  } catch (e) {
-                    return null;
-                  }
-                })
-                .filter((img) => img !== null && img.id !== null);
-            } catch (e) {
-              images = [];
+                    if (item.custom_discount_type && item.custom_discount_value) {
+                        // Use equipment-specific custom discount (highest priority)
+                        discount_type = item.custom_discount_type;
+                        discount_value = parseFloat(item.custom_discount_value);
+                        discount_source = "equipment_specific";
+                    } else if (
+                        item.package_discount_type !== null &&
+                        item.package_discount_value
+                    ) {
+                        // Use pricing package discount (fallback)
+                        discount_type =
+                            item.package_discount_type === 0 ? "percentage" : "fixed";
+                        discount_value = parseFloat(item.package_discount_value);
+                        discount_source = "pricing_package";
+                    }
+
+                    // Get compounding discount if exists
+                    if (item.compounding_discount_type && item.compounding_discount_value) {
+                        compounding_discount_type = item.compounding_discount_type;
+                        compounding_discount_value = parseFloat(item.compounding_discount_value);
+                    }
+
+                    // Process images data
+                    let images = [];
+                    if (item.content_images && item.content_images !== "null") {
+                        try {
+                            const imageStrings = item.content_images.split("|||");
+                            images = imageStrings
+                                .map((imgStr) => {
+                                    try {
+                                        const parsed = JSON.parse(imgStr);
+                                        return parsed && parsed.id !== null ? parsed : null;
+                                    } catch (e) {
+                                        return null;
+                                    }
+                                })
+                                .filter((img) => img !== null && img.id !== null);
+                        } catch (e) {
+                            images = [];
+                        }
+                    }
+
+                    // Get maintenance periods for this equipment
+                    const maintenance_periods = maintenanceByEquipment[item.id] || [];
+
+                    // Calculate equipment status
+                    const now = new Date();
+                    let status = "Available";
+
+                    // Check if currently in maintenance
+                    const inMaintenance = maintenance_periods.some(period => {
+                        const start = new Date(period.start_date);
+                        const end = new Date(period.end_date);
+                        return now >= start && now <= end;
+                    });
+
+                    if (inMaintenance) {
+                        status = "Maintenance";
+                    } else if (item.availability === 0 || item.availability === false) {
+                        status = "Unavailable";
+                    }
+
+                    return {
+                        id: item.id,
+                        equipment_id: item.equipment_id,
+                        name: item.equipment_name,
+                        equipment_name: item.equipment_name,
+                        category_name: item.category_name,
+                        base_price: parseFloat(item.base_price),
+                        discounted_price: parseFloat(
+                            item.discounted_price || item.base_price
+                        ),
+                        discount_type: discount_type,
+                        discount_value: discount_value,
+                        compounding_discount_type: compounding_discount_type,
+                        compounding_discount_value: compounding_discount_value,
+                        discount_source: discount_source,
+                        minimum_duration: item.minimum_duration,
+                        availability: item.availability,
+                        unavailability_due_month: item.unavailability_due_month,
+                        maintenance_periods: maintenance_periods,
+                        status: status,
+                        description: item.content_description,
+                        image: item.content_image,
+                        allImages: images,
+                        content: {
+                            description: item.content_description,
+                            banner_description: item.banner_description,
+                            image: item.content_image, // Keep for backward compatibility
+                            images: images, // Use the parsed images from longtermhire_content_images table
+                        },
+                        pricing_package: {
+                            name: item.package_name,
+                            description: item.package_description,
+                        },
+                    };
+                });
+
+                // Group equipment by category for better organization
+                const groupedEquipment = processedEquipment.reduce((acc, item) => {
+                    const category = item.category_name || "Uncategorized";
+                    if (!acc[category]) {
+                        acc[category] = [];
+                    }
+                    acc[category].push(item);
+                    return acc;
+                }, {});
+
+                return res.status(200).json({
+                    error: false,
+                    data: {
+                        equipment: processedEquipment,
+                        grouped_equipment: groupedEquipment,
+                        total_count: processedEquipment.length,
+                    },
+                    message: "Equipment retrieved successfully",
+                });
+            } catch (error) {
+                console.error("Get client equipment error:", error);
+                return res.status(500).json({
+                    error: true,
+                    message: error.message || "Internal server error",
+                });
             }
-          }
+        }
+    );
 
-          return {
-            id: item.id,
-            equipment_id: item.equipment_id,
-            equipment_name: item.equipment_name,
-            category_name: item.category_name,
-            base_price: parseFloat(item.base_price),
-            discounted_price: parseFloat(
-              item.discounted_price || item.base_price
-            ),
-            discount_type: discount_type,
-            discount_value: discount_value,
-            discount_source: discount_source,
-            minimum_duration: item.minimum_duration,
-            availability: item.availability,
-            content: {
-              description: item.content_description,
-              banner_description: item.banner_description,
-              image: item.content_image, // Keep for backward compatibility
-              images: images, // Use the parsed images from longtermhire_content_images table
-            },
-            pricing_package: {
-              name: item.package_name,
-              description: item.package_description,
-            },
-          };
-        });
+    // Get specific equipment details for client
+    app.get(
+        "/v1/api/longtermhire/client/equipment/:equipmentId",
+        TokenMiddleware(),
+        RoleMiddleware(["member"]),
+        async (req, res) => {
+            try {
+                const { equipmentId } = req.params;
+                const sdk = app.get("sdk");
+                sdk.setProjectId("longtermhire");
 
-        // Group equipment by category for better organization
-        const groupedEquipment = processedEquipment.reduce((acc, item) => {
-          const category = item.category_name || "Uncategorized";
-          if (!acc[category]) {
-            acc[category] = [];
-          }
-          acc[category].push(item);
-          return acc;
-        }, {});
+                console.log(
+                    "🔍 Getting equipment details for client:",
+                    req.user_id,
+                    "equipment:",
+                    equipmentId
+                );
 
-        return res.status(200).json({
-          error: false,
-          data: {
-            equipment: processedEquipment,
-            grouped_equipment: groupedEquipment,
-            total_count: processedEquipment.length,
-          },
-          message: "Equipment retrieved successfully",
-        });
-      } catch (error) {
-        console.error("Get client equipment error:", error);
-        return res.status(500).json({
-          error: true,
-          message: error.message || "Internal server error",
-        });
-      }
-    }
-  );
-
-  // Get specific equipment details for client
-  app.get(
-    "/v1/api/longtermhire/client/equipment/:equipmentId",
-    TokenMiddleware(),
-    RoleMiddleware(["member"]),
-    async (req, res) => {
-      try {
-        const { equipmentId } = req.params;
-        const sdk = app.get("sdk");
-        sdk.setProjectId("longtermhire");
-
-        console.log(
-          "🔍 Getting equipment details for client:",
-          req.user_id,
-          "equipment:",
-          equipmentId
-        );
-
-        // Verify client has access to this equipment
-        const equipment = await sdk.rawQuery(
-          `
+                // Verify client has access to this equipment
+                const equipment = await sdk.rawQuery(
+                    `
           SELECT 
             e.*,
             c.description as content_description,
@@ -257,214 +295,210 @@ module.exports = function (app) {
           WHERE ce.client_user_id = ? AND e.id = ?
           GROUP BY e.id, c.id, pp.id
         `,
-          [req.user_id, equipmentId]
-        );
+                    [req.user_id, equipmentId]
+                );
 
-        if (!equipment || equipment.length === 0) {
-          return res.status(404).json({
-            error: true,
-            message: "Equipment not found or not assigned to you",
-          });
-        }
-
-        const item = equipment[0];
-
-        // Determine discount type and value with proper priority:
-        // 1. Equipment-specific custom discount (highest priority)
-        // 2. Pricing package discount (fallback)
-        // 3. No discount (base price)
-        let discount_type = null;
-        let discount_value = 0;
-        let discount_source = null;
-
-        if (item.custom_discount_type && item.custom_discount_value) {
-          // Use equipment-specific custom discount (highest priority)
-          discount_type = item.custom_discount_type;
-          discount_value = parseFloat(item.custom_discount_value);
-          discount_source = "equipment_specific";
-        } else if (
-          item.package_discount_type !== null &&
-          item.package_discount_value
-        ) {
-          // Use pricing package discount (fallback)
-          discount_type =
-            item.package_discount_type === 0 ? "percentage" : "fixed";
-          discount_value = parseFloat(item.package_discount_value);
-          discount_source = "pricing_package";
-        }
-
-        // Process images data
-        let images = [];
-        if (item.content_images && item.content_images !== "null") {
-          try {
-            const imageStrings = item.content_images.split("|||");
-            images = imageStrings
-              .map((imgStr) => {
-                try {
-                  const parsed = JSON.parse(imgStr);
-                  return parsed && parsed.id !== null ? parsed : null;
-                } catch (e) {
-                  return null;
+                if (!equipment || equipment.length === 0) {
+                    return res.status(404).json({
+                        error: true,
+                        message: "Equipment not found or not assigned to you",
+                    });
                 }
-              })
-              .filter((img) => img !== null && img.id !== null);
-          } catch (e) {
-            images = [];
-          }
+
+                const item = equipment[0];
+
+                // Determine discount type and value with proper priority:
+                // 1. Equipment-specific custom discount (highest priority)
+                // 2. Pricing package discount (fallback)
+                // 3. No discount (base price)
+                let discount_type = null;
+                let discount_value = 0;
+                let discount_source = null;
+
+                if (item.custom_discount_type && item.custom_discount_value) {
+                    // Use equipment-specific custom discount (highest priority)
+                    discount_type = item.custom_discount_type;
+                    discount_value = parseFloat(item.custom_discount_value);
+                    discount_source = "equipment_specific";
+                } else if (
+                    item.package_discount_type !== null &&
+                    item.package_discount_value
+                ) {
+                    // Use pricing package discount (fallback)
+                    discount_type =
+                        item.package_discount_type === 0 ? "percentage" : "fixed";
+                    discount_value = parseFloat(item.package_discount_value);
+                    discount_source = "pricing_package";
+                }
+
+                // Process images data
+                let images = [];
+                if (item.content_images && item.content_images !== "null") {
+                    try {
+                        const imageStrings = item.content_images.split("|||");
+                        images = imageStrings
+                            .map((imgStr) => {
+                                try {
+                                    const parsed = JSON.parse(imgStr);
+                                    return parsed && parsed.id !== null ? parsed : null;
+                                } catch (e) {
+                                    return null;
+                                }
+                            })
+                            .filter((img) => img !== null && img.id !== null);
+                    } catch (e) {
+                        images = [];
+                    }
+                }
+
+                return res.status(200).json({
+                    error: false,
+                    data: {
+                        id: item.id,
+                        equipment_id: item.equipment_id,
+                        equipment_name: item.equipment_name,
+                        category_name: item.category_name,
+                        base_price: parseFloat(item.base_price),
+                        discounted_price: parseFloat(
+                            item.discounted_price || item.base_price
+                        ),
+                        discount_type: discount_type,
+                        discount_value: discount_value,
+                        discount_source: discount_source,
+                        minimum_duration: item.minimum_duration,
+                        availability: item.availability,
+                        content: {
+                            description: item.content_description,
+                            banner_description: item.banner_description,
+                            image: item.content_image, // Keep for backward compatibility
+                            images: images, // Use the parsed images from longtermhire_content_images table
+                        },
+                        pricing_package: {
+                            name: item.package_name,
+                            description: item.package_description,
+                        },
+                    },
+                    message: "Equipment details retrieved successfully",
+                });
+            } catch (error) {
+                console.error("Get client equipment details error:", error);
+                return res.status(500).json({
+                    error: true,
+                    message: error.message || "Internal server error",
+                });
+            }
         }
+    );
 
-        return res.status(200).json({
-          error: false,
-          data: {
-            id: item.id,
-            equipment_id: item.equipment_id,
-            equipment_name: item.equipment_name,
-            category_name: item.category_name,
-            base_price: parseFloat(item.base_price),
-            discounted_price: parseFloat(
-              item.discounted_price || item.base_price
-            ),
-            discount_type: discount_type,
-            discount_value: discount_value,
-            discount_source: discount_source,
-            minimum_duration: item.minimum_duration,
-            availability: item.availability,
-            content: {
-              description: item.content_description,
-              banner_description: item.banner_description,
-              image: item.content_image, // Keep for backward compatibility
-              images: images, // Use the parsed images from longtermhire_content_images table
-            },
-            pricing_package: {
-              name: item.package_name,
-              description: item.package_description,
-            },
-          },
-          message: "Equipment details retrieved successfully",
-        });
-      } catch (error) {
-        console.error("Get client equipment details error:", error);
-        return res.status(500).json({
-          error: true,
-          message: error.message || "Internal server error",
-        });
-      }
-    }
-  );
+    // Submit equipment request
+    app.post(
+        "/v1/api/longtermhire/client/equipment/request",
+        TokenMiddleware(),
+        RoleMiddleware(["member"]),
+        async (req, res) => {
+            try {
+                const { equipment_id, message } = req.body;
+                const sdk = app.get("sdk");
+                sdk.setProjectId("longtermhire");
 
-  // Submit equipment request
-  app.post(
-    "/v1/api/longtermhire/client/equipment/request",
-    TokenMiddleware(),
-    RoleMiddleware(["member"]),
-    async (req, res) => {
-      try {
-        const { equipment_id, message } = req.body;
-        const sdk = app.get("sdk");
-        sdk.setProjectId("longtermhire");
+                if (!equipment_id) {
+                    return res.status(400).json({
+                        error: true,
+                        message: "Equipment ID is required",
+                    });
+                }
 
-        if (!equipment_id) {
-          return res.status(400).json({
-            error: true,
-            message: "Equipment ID is required",
-          });
-        }
+                console.log("📝 Client submitting equipment request:", {
+                    client_user_id: req.user_id,
+                    equipment_id,
+                    message,
+                });
 
-        console.log("📝 Client submitting equipment request:", {
-          client_user_id: req.user_id,
-          equipment_id,
-          message,
-        });
+                // Check if equipment exists and is available
+                const equipment = await sdk.findOne("equipment_item", {
+                    id: equipment_id,
+                    availability: 1,
+                });
 
-        // Check if equipment exists and is available
-        const equipment = await sdk.findOne("equipment_item", {
-          id: equipment_id,
-          availability: 1,
-        });
+                if (!equipment) {
+                    return res.status(404).json({
+                        error: true,
+                        message: "Equipment not found or not available",
+                    });
+                }
 
-        if (!equipment) {
-          return res.status(404).json({
-            error: true,
-            message: "Equipment not found or not available",
-          });
-        }
+                // Create the request
+                const request = await sdk.create("request", {
+                    client_user_id: req.user_id,
+                    equipment_id: equipment_id,
+                    message: message || "",
+                    status: "pending",
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                });
 
-        // Create the request
-        const request = await sdk.create("request", {
-          client_user_id: req.user_id,
-          equipment_id: equipment_id,
-          message: message || "",
-          status: "pending",
-          created_at: new Date(),
-          updated_at: new Date(),
-        });
+                console.log("✅ Equipment request created:", request.id);
 
-        console.log("✅ Equipment request created:", request.id);
+                // Attempt to notify admin via email
+                try {
+                    const config = app.get("configuration");
+                    const mailService = new MailService(config);
 
-        // Attempt to notify admin via email
-        try {
-          const config = app.get("configuration");
-          const mailService = new MailService(config);
+                    const to = "admin@longtermhire.com";
+                    const from =
+                        (config.mail && config.mail.from_mail) ||
+                        "noreply@equipmenthire.com";
 
-          const to = "admin@longtermhire.com";
-          const from =
-            (config.mail && config.mail.from_mail) ||
-            "noreply@equipmenthire.com";
-
-          const htmlContent = `
+                    const htmlContent = `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 20px; background-color: #292A2B;">
               <div style="background-color: #1F1F20; padding: 24px; border-radius: 8px; border: 2px solid #E5E7EB;">
                 <h2 style="color: #E5E5E5; margin: 0; font-weight: 500;">📝 New Equipment Request</h2>
                 <p style="color: #ADAEBC; margin: 12px 0 0 0;">A client submitted a new equipment request.</p>
                 <div style="background: #292A2B; padding: 16px; border-radius: 6px; margin: 16px 0; border: 1px solid #444444;">
                   <p style="color: #E5E5E5; margin: 0;">
-                    <strong style="color:#FDCE06;">Request ID:</strong> ${
-                      request.id || "(pending id)"
-                    }<br/>
-                    <strong style="color:#FDCE06;">Client User ID:</strong> ${
-                      req.user_id
-                    }<br/>
+                    <strong style="color:#FDCE06;">Request ID:</strong> ${request.id || "(pending id)"
+                        }<br/>
+                    <strong style="color:#FDCE06;">Client User ID:</strong> ${req.user_id
+                        }<br/>
                     <strong style="color:#FDCE06;">Equipment ID:</strong> ${equipment_id}<br/>
-                    <strong style="color:#FDCE06;">Equipment Name:</strong> ${
-                      equipment.equipment_name || "N/A"
-                    }<br/>
-                    <strong style="color:#FDCE06;">Message:</strong> ${
-                      message || ""
-                    }
+                    <strong style="color:#FDCE06;">Equipment Name:</strong> ${equipment.equipment_name || "N/A"
+                        }<br/>
+                    <strong style="color:#FDCE06;">Message:</strong> ${message || ""
+                        }
                   </p>
                 </div>
                 <p style="color:#ADAEBC; margin: 0;">Please review this request in the admin chat.</p>
                 <p style="color:#666; font-size:12px; margin-top:16px;">Sent on ${new Date().toLocaleString(
-                  "en-AU",
-                  { timeZone: "Australia/Melbourne" }
-                )}</p>
+                            "en-AU",
+                            { timeZone: "Australia/Melbourne" }
+                        )}</p>
               </div>
             </div>`;
 
-          await mailService.send(
-            from,
-            to,
-            "📝 New Equipment Request Submitted",
-            htmlContent
-          );
+                    await mailService.send(
+                        from,
+                        to,
+                        "📝 New Equipment Request Submitted",
+                        htmlContent
+                    );
 
-          console.log(`📧 Admin notification sent to ${to}.`);
-        } catch (mailErr) {
-          console.error("❌ Failed to send admin notification email:", mailErr);
+                    console.log(`📧 Admin notification sent to ${to}.`);
+                } catch (mailErr) {
+                    console.error("❌ Failed to send admin notification email:", mailErr);
+                }
+
+                return res.status(201).json({
+                    error: false,
+                    data: request,
+                    message: "Equipment request submitted successfully",
+                });
+            } catch (error) {
+                console.error("Submit equipment request error:", error);
+                return res.status(500).json({
+                    error: true,
+                    message: error.message || "Internal server error",
+                });
+            }
         }
-
-        return res.status(201).json({
-          error: false,
-          data: request,
-          message: "Equipment request submitted successfully",
-        });
-      } catch (error) {
-        console.error("Submit equipment request error:", error);
-        return res.status(500).json({
-          error: true,
-          message: error.message || "Internal server error",
-        });
-      }
-    }
-  );
+    );
 };
