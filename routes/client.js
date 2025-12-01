@@ -113,13 +113,39 @@ module.exports = function (app) {
         console.log("User insert completed!");
         console.log("User insert result:", JSON.stringify(userResult, null, 2));
 
-        // Create client profile in database using raw SQL
-        console.log("About to insert client with raw SQL...");
         const userId = userResult.insertId || userResult.id;
 
+        // Create company for the new client
+        console.log("About to create company with raw SQL...");
+        const companyInsertSQL = `
+          INSERT INTO longtermhire_company (company_name, owner_user_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?)
+        `;
+
+        console.log("Company insert SQL:", companyInsertSQL);
+        console.log("Company insert values:", [
+          company_name,
+          userId,
+          currentTime,
+          currentTime,
+        ]);
+
+        const companyResult = await sdk.rawQuery(companyInsertSQL, [
+          company_name,
+          userId,
+          currentTime,
+          currentTime,
+        ]);
+
+        const companyId = companyResult.insertId || companyResult.id;
+        console.log("Company created with ID:", companyId);
+
+        // Create client profile in database using raw SQL
+        console.log("About to insert client with raw SQL...");
+
         const clientInsertSQL = `
-          INSERT INTO longtermhire_client (user_id, client_name, company_name, phone, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO longtermhire_client (user_id, client_name, company_name, company_id, phone, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
         `;
 
         console.log("Client insert SQL:", clientInsertSQL);
@@ -127,6 +153,7 @@ module.exports = function (app) {
           userId,
           client_name,
           company_name,
+          companyId,
           phone || null,
           currentTime,
           currentTime,
@@ -136,6 +163,7 @@ module.exports = function (app) {
           userId,
           client_name,
           company_name,
+          companyId,
           phone || null,
           currentTime,
           currentTime,
@@ -761,10 +789,8 @@ module.exports = function (app) {
               currentTime,
             ]);
             console.log(
-              `Assigned custom discount to client ${client_user_id}: ${
-                custom_discount?.discountValue
-              }${
-                custom_discount?.discountType === "percentage" ? "%" : "$"
+              `Assigned custom discount to client ${client_user_id}: ${custom_discount?.discountValue
+              }${custom_discount?.discountType === "percentage" ? "%" : "$"
               } off`
             );
           } else {
