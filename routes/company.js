@@ -245,7 +245,90 @@ module.exports = function (app) {
           }
         }
 
-        // Check if email already exists
+        // Check if email already exists ANYWHERE in the database (app-wide uniqueness)
+        // Check in longtermhire_user table
+        const existingUserCheck = await sdk.rawQuery(
+          `SELECT id, email FROM longtermhire_user WHERE email = ? LIMIT 1`,
+          [member_email]
+        );
+
+        if (existingUserCheck && existingUserCheck.length > 0) {
+          // Check if this user is already a team member or client
+          const existingMemberCheck = await sdk.rawQuery(
+            `SELECT cm.id, cm.company_id, c.company_name 
+             FROM longtermhire_company_member cm
+             JOIN longtermhire_company c ON c.id = cm.company_id
+             WHERE cm.user_id = ? LIMIT 1`,
+            [existingUserCheck[0].id]
+          );
+
+          if (existingMemberCheck && existingMemberCheck.length > 0) {
+            return res.status(400).json({
+              error: true,
+              message: `This email (${member_email}) is already a team member of ${existingMemberCheck[0].company_name}. Each email can only be used once.`,
+            });
+          }
+
+          const existingClientCheck = await sdk.rawQuery(
+            `SELECT c.id, c.client_name, c.company_name 
+             FROM longtermhire_client c
+             WHERE c.user_id = ? LIMIT 1`,
+            [existingUserCheck[0].id]
+          );
+
+          if (existingClientCheck && existingClientCheck.length > 0) {
+            return res.status(400).json({
+              error: true,
+              message: `This email (${member_email}) is already registered as a client (${existingClientCheck[0].client_name}). Each email can only be used once.`,
+            });
+          }
+
+          // User exists but not as team member or client - still block to prevent conflicts
+          return res.status(400).json({
+            error: true,
+            message: `This email (${member_email}) is already registered in the system. Each email can only be used once.`,
+          });
+        }
+
+        // Check in longtermhire_company_member table by email
+        const existingMemberByEmailCheck = await sdk.rawQuery(
+          `SELECT cm.id, cm.company_id, c.company_name 
+           FROM longtermhire_company_member cm
+           JOIN longtermhire_company c ON c.id = cm.company_id
+           WHERE cm.member_email = ? LIMIT 1`,
+          [member_email]
+        );
+
+        if (
+          existingMemberByEmailCheck &&
+          existingMemberByEmailCheck.length > 0
+        ) {
+          return res.status(400).json({
+            error: true,
+            message: `This email (${member_email}) is already a team member of ${existingMemberByEmailCheck[0].company_name}. Each email can only be used once.`,
+          });
+        }
+
+        // Check in longtermhire_client table
+        const existingClientByEmailCheck = await sdk.rawQuery(
+          `SELECT c.id, c.client_name, c.company_name 
+           FROM longtermhire_client c
+           JOIN longtermhire_user u ON c.user_id = u.id
+           WHERE u.email = ? LIMIT 1`,
+          [member_email]
+        );
+
+        if (
+          existingClientByEmailCheck &&
+          existingClientByEmailCheck.length > 0
+        ) {
+          return res.status(400).json({
+            error: true,
+            message: `This email (${member_email}) is already registered as a client (${existingClientByEmailCheck[0].client_name}). Each email can only be used once.`,
+          });
+        }
+
+        // Check if email already exists as a user (for reuse logic)
         sdk.setTable("user");
         const existingUser = await sdk.rawQuery(
           `SELECT id FROM longtermhire_user WHERE email = ? LIMIT 1`,
@@ -253,31 +336,47 @@ module.exports = function (app) {
         );
 
         let userId;
+        let plainPassword; // Declare in outer scope
+        let userResult = null; // Declare in outer scope
+        const currentTime = new Date()
+          .toISOString()
+          .slice(0, 19)
+          .replace("T", " ");
 
         if (existingUser && existingUser.length > 0) {
-          // User already exists, use that user
+          // User already exists
           userId = existingUser[0].id;
+
+          // If password is provided, update the existing user's password
+          if (password) {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            await sdk.rawQuery(
+              `UPDATE longtermhire_user SET password = ?, updated_at = ? WHERE id = ?`,
+              [hashedPassword, currentTime, userId]
+            );
+            plainPassword = password;
+          } else {
+            // No password provided for existing user - they should use existing password or reset
+            plainPassword =
+              "Use your existing password or reset it via forgot password";
+          }
         } else {
           // Create new user account
           const generatedUsername =
             username ||
             member_email.split("@")[0] +
-            Math.random().toString(36).substring(2, 6);
+              Math.random().toString(36).substring(2, 6);
           const generatedPassword =
             password || Math.random().toString(36).substring(2, 10);
+          plainPassword = generatedPassword; // Store the plain password
           const hashedPassword = await bcrypt.hash(generatedPassword, 10);
-
-          const currentTime = new Date()
-            .toISOString()
-            .slice(0, 19)
-            .replace("T", " ");
 
           const userInsertSQL = `
             INSERT INTO longtermhire_user (email, password, role_id, status, verify, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
           `;
 
-          const userResult = await sdk.rawQuery(userInsertSQL, [
+          userResult = await sdk.rawQuery(userInsertSQL, [
             member_email,
             hashedPassword,
             "member",
@@ -316,7 +415,7 @@ module.exports = function (app) {
           const config = app.get("configuration");
           const mailService = new MailService(config);
           const loginUrl = "https://www.longtermhire.com/client/login";
-          const plainPassword = password || (userId === userResult?.insertId ? generatedPassword : "Use your existing password");
+          // plainPassword is already defined above
 
           // Create HTML email template
           const htmlContent = `
@@ -336,7 +435,9 @@ module.exports = function (app) {
                 <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
                   <h3 style="color: #E5E5E5; margin-top: 0; font-size: 20px; font-weight: 400;">👋 Hello ${member_name}!</h3>
                   <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
-                    You have been invited to your company <strong>${company.company_name}</strong> by <strong>Long Term Hire</strong>.
+                    You have been invited to your company <strong>${
+                      company.company_name
+                    }</strong> by <strong>Long Term Hire</strong>.
                     You have been assigned the role of <strong>${role}</strong>.
                   </p>
                 </div>
@@ -391,11 +492,15 @@ module.exports = function (app) {
           // Don't fail the request if email fails, just log it
         }
 
+        // Return password in response so it can be displayed if needed
+        // (password is also sent via email)
         return res.status(201).json({
           error: false,
           message: "Team member added successfully",
           data: {
             user_id: userId,
+            password: plainPassword, // Include password in response for display
+            email: member_email,
           },
         });
       } catch (error) {
@@ -850,8 +955,9 @@ module.exports = function (app) {
 
         return res.status(200).json({
           error: false,
-          message: `Discount applied to ${result.affectedRows || 0
-            } equipment items successfully`,
+          message: `Discount applied to ${
+            result.affectedRows || 0
+          } equipment items successfully`,
           data: {
             affected_rows: result.affectedRows || 0,
           },
@@ -892,13 +998,13 @@ module.exports = function (app) {
 
         return res.status(200).json({
           error: false,
-          data: companies || []
+          data: companies || [],
         });
       } catch (error) {
         console.error("Get companies list error:", error);
         return res.status(500).json({
           error: true,
-          message: error.message || "Failed to fetch companies"
+          message: error.message || "Failed to fetch companies",
         });
       }
     }

@@ -156,8 +156,9 @@ module.exports = function (app) {
                     <p style="color: #E5E5E5; margin: 0;">
                       <strong style="color:#FDCE06;">Client Name:</strong> ${clientName}<br/>
                       <strong style="color:#FDCE06;">Company:</strong> ${companyName}<br/>
-                      <strong style="color:#FDCE06;">Email:</strong> ${user.email
-              }<br/>
+                      <strong style="color:#FDCE06;">Email:</strong> ${
+                        user.email
+                      }<br/>
                       <strong style="color:#FDCE06;">Login Time:</strong> ${loginTime}<br/>
                      
                     </p>
@@ -171,9 +172,9 @@ module.exports = function (app) {
 
                   <p style="color:#ADAEBC; margin: 0;">Please monitor this client's activity in the admin dashboard.</p>
                   <p style="color:#666; font-size:12px; margin-top:16px;">Sent on ${new Date().toLocaleString(
-                "en-AU",
-                { timeZone: "Australia/Melbourne" }
-              )}</p>
+                    "en-AU",
+                    { timeZone: "Australia/Melbourne" }
+                  )}</p>
                 </div>
               </div>
             `;
@@ -397,41 +398,85 @@ module.exports = function (app) {
           });
         }
 
-        // Get client profile
-        let clientProfile = await sdk.findOne("client", {
-          user_id: req.user_id,
-        });
+        // Get client profile - check company_member table first (V2), then longtermhire_client (V1)
+        let clientProfile = null;
+        let isCompanyMember = false;
 
-        if (!clientProfile) {
-          return res.status(404).json({
-            error: true,
-            message: "Client profile not found",
-          });
-        }
-
-        // Update client profile using raw SQL to avoid SDK issues
-        const currentTime = new Date()
-          .toISOString()
-          .slice(0, 19)
-          .replace("T", " ");
-
-        const updateSQL = `
-          UPDATE longtermhire_client
-          SET client_name = ?, updated_at = ?
-          WHERE id = ?
+        // Try company_member table first (V2 - preferred)
+        const companyMemberQuery = `
+          SELECT id, company_id, member_name, user_id
+          FROM longtermhire_company_member
+          WHERE user_id = ?
+          LIMIT 1
         `;
-
-        console.log("Updating client profile:", {
-          client_id: clientProfile.id,
-          new_name: client_name || name,
-          sql: updateSQL,
-        });
-
-        await sdk.rawQuery(updateSQL, [
-          client_name || name,
-          currentTime,
-          clientProfile.id,
+        const companyMemberResult = await sdk.rawQuery(companyMemberQuery, [
+          req.user_id,
         ]);
+
+        if (companyMemberResult && companyMemberResult.length > 0) {
+          // User is a company member - update member_name
+          isCompanyMember = true;
+          clientProfile = companyMemberResult[0];
+
+          const currentTime = new Date()
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " ");
+
+          const updateSQL = `
+            UPDATE longtermhire_company_member
+            SET member_name = ?, updated_at = ?
+            WHERE id = ?
+          `;
+
+          console.log("Updating company member profile:", {
+            member_id: clientProfile.id,
+            new_name: client_name || name,
+            sql: updateSQL,
+          });
+
+          await sdk.rawQuery(updateSQL, [
+            client_name || name,
+            currentTime,
+            clientProfile.id,
+          ]);
+        } else {
+          // Fallback to longtermhire_client table (V1)
+          clientProfile = await sdk.findOne("client", {
+            user_id: req.user_id,
+          });
+
+          if (!clientProfile) {
+            return res.status(404).json({
+              error: true,
+              message: "Client profile not found",
+            });
+          }
+
+          // Update client profile using raw SQL to avoid SDK issues
+          const currentTime = new Date()
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " ");
+
+          const updateSQL = `
+            UPDATE longtermhire_client
+            SET client_name = ?, updated_at = ?
+            WHERE id = ?
+          `;
+
+          console.log("Updating client profile:", {
+            client_id: clientProfile.id,
+            new_name: client_name || name,
+            sql: updateSQL,
+          });
+
+          await sdk.rawQuery(updateSQL, [
+            client_name || name,
+            currentTime,
+            clientProfile.id,
+          ]);
+        }
 
         console.log("✅ Client profile updated successfully");
 

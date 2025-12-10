@@ -21,7 +21,7 @@ module.exports = function (app) {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const filters = {
-          quoteId: req.query.quoteId,
+          quoteId: req.query.quote_id || req.query.quoteId, // Support both snake_case and camelCase
           companyName: req.query.companyName,
           status: req.query.status
         };

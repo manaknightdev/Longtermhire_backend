@@ -62,6 +62,53 @@ module.exports = function (app) {
           });
         }
 
+        // Check if email already exists ANYWHERE in the database (app-wide uniqueness)
+        // Check in longtermhire_user table
+        const existingUserCheck = await sdk.rawQuery(
+          `SELECT id, email FROM longtermhire_user WHERE email = ? LIMIT 1`,
+          [email]
+        );
+
+        if (existingUserCheck && existingUserCheck.length > 0) {
+          return res.status(400).json({
+            error: true,
+            message: `This email (${email}) is already registered in the system. Each email can only be used once.`,
+          });
+        }
+
+        // Check in longtermhire_company_member table
+        const existingMemberCheck = await sdk.rawQuery(
+          `SELECT cm.id, cm.company_id, c.company_name 
+           FROM longtermhire_company_member cm
+           JOIN longtermhire_company c ON c.id = cm.company_id
+           WHERE cm.member_email = ? LIMIT 1`,
+          [email]
+        );
+
+        if (existingMemberCheck && existingMemberCheck.length > 0) {
+          return res.status(400).json({
+            error: true,
+            message: `This email (${email}) is already a team member of ${existingMemberCheck[0].company_name}. Each email can only be used once.`,
+          });
+        }
+
+        // Check in longtermhire_client table
+        const existingClientCheck = await sdk.rawQuery(
+          `SELECT c.id, c.client_name, c.company_name 
+           FROM longtermhire_client c
+           JOIN longtermhire_user u ON c.user_id = u.id
+           WHERE u.email = ? LIMIT 1`,
+          [email]
+        );
+
+        if (existingClientCheck && existingClientCheck.length > 0) {
+          return res.status(400).json({
+            error: true,
+            message: `This email (${email}) is already registered as a client (${existingClientCheck[0].client_name}). Each email can only be used once.`,
+          });
+        }
+
+        console.log("Email validation passed - email is unique");
         console.log("Validation passed, generating credentials...");
         console.log("Equipment data received:", equipment);
         console.log("Pricing data received:", pricing);
@@ -139,6 +186,24 @@ module.exports = function (app) {
 
         const companyId = companyResult.insertId || companyResult.id;
         console.log("Company created with ID:", companyId);
+
+        // Create company member entry for the owner with "Company Owner" role
+        console.log("Creating company member entry for owner...");
+        const companyMemberInsertSQL = `
+          INSERT INTO longtermhire_company_member (company_id, user_id, member_name, member_email, member_phone, role, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        await sdk.rawQuery(companyMemberInsertSQL, [
+          companyId,
+          userId,
+          client_name,
+          email,
+          phone || null,
+          "Company Owner",
+          currentTime,
+          currentTime,
+        ]);
+        console.log("✅ Company member entry created with Company Owner role");
 
         // Create client profile in database using raw SQL
         console.log("About to insert client with raw SQL...");
@@ -303,6 +368,7 @@ module.exports = function (app) {
               user_id: userId,
               username: username,
               email: email,
+              password: plainPassword, // Include password in response for display (also sent via email)
               email_sent: !emailResult.error,
               login_url: loginUrl,
               equipment_assigned:
@@ -789,8 +855,10 @@ module.exports = function (app) {
               currentTime,
             ]);
             console.log(
-              `Assigned custom discount to client ${client_user_id}: ${custom_discount?.discountValue
-              }${custom_discount?.discountType === "percentage" ? "%" : "$"
+              `Assigned custom discount to client ${client_user_id}: ${
+                custom_discount?.discountValue
+              }${
+                custom_discount?.discountType === "percentage" ? "%" : "$"
               } off`
             );
           } else {
@@ -940,25 +1008,48 @@ module.exports = function (app) {
         const sdk = app.get("sdk");
         sdk.setProjectId("longtermhire");
 
-        // Get client's company information
-        const clientQuery = `
-          SELECT c.company_name, c.company_id, co.ad_text, co.ad_text_destination
-          FROM longtermhire_client c
-          LEFT JOIN longtermhire_company co ON c.company_id = co.id
-          WHERE c.user_id = ?
+        // Get client's company information - check company_member table first (V2 structure)
+        // Then fallback to longtermhire_client table (V1 structure)
+        let clientData = null;
+
+        // Try company_member table first (V2 - preferred)
+        const companyMemberQuery = `
+          SELECT cm.company_id, co.company_name, co.ad_text, co.ad_text_destination
+          FROM longtermhire_company_member cm
+          LEFT JOIN longtermhire_company co ON cm.company_id = co.id
+          WHERE cm.user_id = ?
           LIMIT 1
         `;
 
-        const clientResult = await sdk.rawQuery(clientQuery, [req.user_id]);
+        const companyMemberResult = await sdk.rawQuery(companyMemberQuery, [
+          req.user_id,
+        ]);
 
-        if (!clientResult || clientResult.length === 0) {
+        if (companyMemberResult && companyMemberResult.length > 0) {
+          clientData = companyMemberResult[0];
+        } else {
+          // Fallback to longtermhire_client table (V1)
+          const clientQuery = `
+            SELECT c.company_name, c.company_id, co.ad_text, co.ad_text_destination
+            FROM longtermhire_client c
+            LEFT JOIN longtermhire_company co ON c.company_id = co.id
+            WHERE c.user_id = ?
+            LIMIT 1
+          `;
+
+          const clientResult = await sdk.rawQuery(clientQuery, [req.user_id]);
+
+          if (clientResult && clientResult.length > 0) {
+            clientData = clientResult[0];
+          }
+        }
+
+        if (!clientData) {
           return res.status(404).json({
             error: true,
             message: "Client not found",
           });
         }
-
-        const clientData = clientResult[0];
 
         // Get company logo from admin settings
         const adminUser = await sdk.findOne("user", { id: 1 });
