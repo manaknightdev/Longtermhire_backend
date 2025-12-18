@@ -16,7 +16,7 @@ module.exports = function (app) {
         console.log("🔍 Getting equipment for client user:", req.user_id);
 
         // Get category filter from query params
-        const categoryFilter = req.query["categories[]"];
+        const categoryFilter = req.query.categories || req.query["categories[]"];
         const selectedCategories = categoryFilter
           ? Array.isArray(categoryFilter)
             ? categoryFilter
@@ -547,26 +547,22 @@ module.exports = function (app) {
                 <p style="color: #ADAEBC; margin: 12px 0 0 0;">A client submitted a new equipment request.</p>
                 <div style="background: #292A2B; padding: 16px; border-radius: 6px; margin: 16px 0; border: 1px solid #444444;">
                   <p style="color: #E5E5E5; margin: 0;">
-                    <strong style="color:#FDCE06;">Request ID:</strong> ${
-                      request.id || "(pending id)"
-                    }<br/>
-                    <strong style="color:#FDCE06;">Client User ID:</strong> ${
-                      req.user_id
-                    }<br/>
+                    <strong style="color:#FDCE06;">Request ID:</strong> ${request.id || "(pending id)"
+            }<br/>
+                    <strong style="color:#FDCE06;">Client User ID:</strong> ${req.user_id
+            }<br/>
                     <strong style="color:#FDCE06;">Equipment ID:</strong> ${equipment_id}<br/>
-                    <strong style="color:#FDCE06;">Equipment Name:</strong> ${
-                      equipment.equipment_name || "N/A"
-                    }<br/>
-                    <strong style="color:#FDCE06;">Message:</strong> ${
-                      message || ""
-                    }
+                    <strong style="color:#FDCE06;">Equipment Name:</strong> ${equipment.equipment_name || "N/A"
+            }<br/>
+                    <strong style="color:#FDCE06;">Message:</strong> ${message || ""
+            }
                   </p>
                 </div>
                 <p style="color:#ADAEBC; margin: 0;">Please review this request in the admin chat.</p>
                 <p style="color:#666; font-size:12px; margin-top:16px;">Sent on ${new Date().toLocaleString(
-                  "en-AU",
-                  { timeZone: "Australia/Melbourne" }
-                )}</p>
+              "en-AU",
+              { timeZone: "Australia/Melbourne" }
+            )}</p>
               </div>
             </div>`;
 

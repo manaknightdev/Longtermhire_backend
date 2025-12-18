@@ -156,9 +156,8 @@ module.exports = function (app) {
                     <p style="color: #E5E5E5; margin: 0;">
                       <strong style="color:#FDCE06;">Client Name:</strong> ${clientName}<br/>
                       <strong style="color:#FDCE06;">Company:</strong> ${companyName}<br/>
-                      <strong style="color:#FDCE06;">Email:</strong> ${
-                        user.email
-                      }<br/>
+                      <strong style="color:#FDCE06;">Email:</strong> ${user.email
+              }<br/>
                       <strong style="color:#FDCE06;">Login Time:</strong> ${loginTime}<br/>
                      
                     </p>
@@ -172,9 +171,9 @@ module.exports = function (app) {
 
                   <p style="color:#ADAEBC; margin: 0;">Please monitor this client's activity in the admin dashboard.</p>
                   <p style="color:#666; font-size:12px; margin-top:16px;">Sent on ${new Date().toLocaleString(
-                    "en-AU",
-                    { timeZone: "Australia/Melbourne" }
-                  )}</p>
+                "en-AU",
+                { timeZone: "Australia/Melbourne" }
+              )}</p>
                 </div>
               </div>
             `;
@@ -343,6 +342,27 @@ module.exports = function (app) {
           clientProfile = await sdk.findOne("client", {
             user_id: req.user_id,
           });
+
+          if (!clientProfile) {
+            // Check company member table
+            const memberResult = await sdk.rawQuery(
+              `SELECT cm.*, c.company_name 
+               FROM longtermhire_company_member cm
+               JOIN longtermhire_company c ON cm.company_id = c.id
+               WHERE cm.user_id = ?
+               LIMIT 1`,
+              [req.user_id]
+            );
+
+            if (memberResult && memberResult.length > 0) {
+              const member = memberResult[0];
+              clientProfile = {
+                ...member,
+                client_name: member.member_name, // Map member_name to client_name for consistency
+              };
+              console.log("✅ Found profile in company_member table");
+            }
+          }
         } catch (error) {
           console.log("⚠️ No client profile found for user:", req.user_id);
         }
