@@ -290,6 +290,8 @@ module.exports = function (app) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
+        const specsFilesValue = Array.isArray(specs_file) ? JSON.stringify(specs_file) : (specs_file || null);
+
         const result = await sdk.rawQuery(insertSQL, [
           categoryId || `C${Date.now()}`,
           category,

@@ -78,6 +78,7 @@ CREATE TABLE `longtermhire_client` (
   `client_name` varchar(512) NOT NULL,
   `company_name` varchar(512) NOT NULL,
   `phone` varchar(512) DEFAULT NULL,
+  `address` varchar(512) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),

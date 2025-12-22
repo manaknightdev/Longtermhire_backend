@@ -38,6 +38,23 @@ class QuoteModel {
   async create(data) {
     const quoteId = await this.generateQuoteId();
 
+    // Fetch admin company logo if not provided
+    let finalLogo = data.company_logo || null;
+    if (!finalLogo) {
+      try {
+        const adminSettingsSQL = `SELECT company_logo FROM longtermhire_company_settings LIMIT 1`;
+        const adminSettings = await this.sdk.rawQuery(adminSettingsSQL);
+        if (adminSettings && adminSettings.length > 0 && adminSettings[0].company_logo) {
+          finalLogo = adminSettings[0].company_logo;
+        } else {
+          finalLogo = "/login-logo.png";
+        }
+      } catch (error) {
+        console.error("Error fetching default logo:", error);
+        finalLogo = "/login-logo.png";
+      }
+    }
+
     const quoteData = {
       quote_id: quoteId,
       company_id: data.company_id || null,
@@ -45,7 +62,7 @@ class QuoteModel {
       company_name: data.company_name,
       company_address: data.company_address || null,
       company_email: data.company_email,
-      company_logo: data.company_logo || null,
+      company_logo: finalLogo,
       quote_expires_after: data.quote_expires_after || 7,
       produce_quote_for: data.produce_quote_for || 12,
       gst_percentage: data.gst_percentage || 15,

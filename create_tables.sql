@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS `longtermhire_client` (
   `client_name` VARCHAR(512) NOT NULL,
   `company_name` VARCHAR(512) NOT NULL,
   `phone` VARCHAR(512),
+  `address` VARCHAR(512),
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`user_id`) REFERENCES `longtermhire_user`(`id`) ON DELETE CASCADE,

@@ -49,34 +49,14 @@ module.exports = function (app) {
           );
           console.log(`👔 User role: ${userRole}`);
 
-          // Build WHERE clause based on role
-          if (userRole === "Supervisor") {
-            // Supervisors only see equipment with maintenance or unavailable
-            whereClause = `
-              WHERE ce.client_user_id IN (
-                SELECT user_id
-                FROM longtermhire_company_member
-                WHERE company_id = ?
-              )
-              AND (
-                EXISTS (
-                  SELECT 1
-                  FROM longtermhire_equipment_maintenance em
-                  WHERE em.equipment_id = e.id
-                )
-                OR e.availability = 0
-              )
-            `;
-          } else {
-            // Engineers and Company Owners see all equipment
-            whereClause = `
-              WHERE ce.client_user_id IN (
-                SELECT user_id
-                FROM longtermhire_company_member
-                WHERE company_id = ?
-              )
-            `;
-          }
+          // Engineers, Supervisors, and Company Owners see all equipment for their company
+          whereClause = `
+            WHERE ce.client_user_id IN (
+              SELECT user_id
+              FROM longtermhire_company_member
+              WHERE company_id = ?
+            )
+          `;
           queryParams = [companyId];
         } else {
           // User is not a company member - fetch only their personal equipment

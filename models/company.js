@@ -17,7 +17,8 @@ class CompanyModel {
    * @param {number} data.owner_user_id - User ID of the company owner
    * @param {string} [data.company_address] - Company address
    * @param {string} [data.company_logo] - URL to company logo
-   * @param {string} [data.ad_text] - AD text/HTML content
+   * @param {string} [data.header_ad_text] - Header AD text/HTML content
+   * @param {string} [data.sticky_ad_text] - Sticky note AD text/HTML content
    * @returns {Promise<Object>} Created company data
    */
   async create(data) {
@@ -26,7 +27,8 @@ class CompanyModel {
       owner_user_id: data.owner_user_id,
       company_address: data.company_address || null,
       company_logo: data.company_logo || null,
-      ad_text: data.ad_text || null,
+      header_ad_text: data.header_ad_text || null,
+      sticky_ad_text: data.sticky_ad_text || null,
       created_at: new Date(),
       updated_at: new Date()
     };
@@ -98,7 +100,8 @@ class CompanyModel {
     if (data.company_name !== undefined) updateData.company_name = data.company_name;
     if (data.company_address !== undefined) updateData.company_address = data.company_address;
     if (data.company_logo !== undefined) updateData.company_logo = data.company_logo;
-    if (data.ad_text !== undefined) updateData.ad_text = data.ad_text;
+    if (data.header_ad_text !== undefined) updateData.header_ad_text = data.header_ad_text;
+    if (data.sticky_ad_text !== undefined) updateData.sticky_ad_text = data.sticky_ad_text;
 
     const result = await this.sdk.update(this.tableName, { id: id }, updateData);
     return result;

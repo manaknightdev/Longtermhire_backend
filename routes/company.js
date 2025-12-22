@@ -27,7 +27,8 @@ module.exports = function (app) {
           owner_user_id,
           company_address,
           company_logo,
-          ad_text,
+          header_ad_text,
+          sticky_ad_text,
         } = req.body;
 
         // Validation
@@ -69,7 +70,8 @@ module.exports = function (app) {
           owner_user_id,
           company_address,
           company_logo,
-          ad_text,
+          header_ad_text,
+          sticky_ad_text,
         });
 
         // Create company member entry for owner
@@ -151,7 +153,7 @@ module.exports = function (app) {
         sdk.setProjectId("longtermhire");
 
         const companyId = req.params.id;
-        const { company_name, company_address, company_logo, ad_text } =
+        const { company_name, company_address, company_logo, header_ad_text, sticky_ad_text } =
           req.body;
 
         const companyModel = new CompanyModel(sdk);
@@ -170,7 +172,8 @@ module.exports = function (app) {
           company_name,
           company_address,
           company_logo,
-          ad_text,
+          header_ad_text,
+          sticky_ad_text,
         });
 
         return res.status(200).json({
@@ -365,7 +368,7 @@ module.exports = function (app) {
           const generatedUsername =
             username ||
             member_email.split("@")[0] +
-              Math.random().toString(36).substring(2, 6);
+            Math.random().toString(36).substring(2, 6);
           const generatedPassword =
             password || Math.random().toString(36).substring(2, 10);
           plainPassword = generatedPassword; // Store the plain password
@@ -435,9 +438,8 @@ module.exports = function (app) {
                 <div style="background: #1C1C1C; padding: 25px; border-radius: 6px; margin: 25px 0; border: 1px solid #444444;">
                   <h3 style="color: #E5E5E5; margin-top: 0; font-size: 20px; font-weight: 400;">👋 Hello ${member_name}!</h3>
                   <p style="color: #ADAEBC; line-height: 1.6; margin: 15px 0;">
-                    You have been invited to your company <strong>${
-                      company.company_name
-                    }</strong> by <strong>Long Term Hire</strong>.
+                    You have been invited to your company <strong>${company.company_name
+            }</strong> by <strong>Long Term Hire</strong>.
                     You have been assigned the role of <strong>${role}</strong>.
                   </p>
                 </div>
@@ -955,9 +957,8 @@ module.exports = function (app) {
 
         return res.status(200).json({
           error: false,
-          message: `Discount applied to ${
-            result.affectedRows || 0
-          } equipment items successfully`,
+          message: `Discount applied to ${result.affectedRows || 0
+            } equipment items successfully`,
           data: {
             affected_rows: result.affectedRows || 0,
           },

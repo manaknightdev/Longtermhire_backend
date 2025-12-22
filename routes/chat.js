@@ -245,11 +245,11 @@ module.exports = function (app) {
               c.user2_id,
               c.last_message_text,
               c.updated_at,
-              COALESCE(cl1.client_name, u1.email) as user1_name,
-              COALESCE(cl2.client_name, u2.email) as user2_name,
+              COALESCE(cl1.client_name, cm1.member_name, u1.email) as user1_name,
+              COALESCE(cl2.client_name, cm2.member_name, u2.email) as user2_name,
               CASE
-                WHEN c.user1_id = ? THEN COALESCE(cl2.client_name, u2.email)
-                ELSE COALESCE(cl1.client_name, u1.email)
+                WHEN c.user1_id = ? THEN COALESCE(cl2.client_name, cm2.member_name, u2.email)
+                ELSE COALESCE(cl1.client_name, cm1.member_name, u1.email)
               END as other_user_name,
               CASE
                 WHEN c.user1_id = ? THEN c.user2_id
@@ -270,6 +270,8 @@ module.exports = function (app) {
             LEFT JOIN longtermhire_user u2 ON c.user2_id = u2.id
             LEFT JOIN longtermhire_client cl1 ON u1.id = cl1.user_id
             LEFT JOIN longtermhire_client cl2 ON u2.id = cl2.user_id
+            LEFT JOIN longtermhire_company_member cm1 ON u1.id = cm1.user_id
+            LEFT JOIN longtermhire_company_member cm2 ON u2.id = cm2.user_id
             WHERE c.user1_id = ? OR c.user2_id = ?
             GROUP BY c.id
             ORDER BY c.updated_at DESC
@@ -285,8 +287,8 @@ module.exports = function (app) {
               c.last_message_text,
               c.unread_count,
               c.updated_at,
-              COALESCE(cl1.client_name, u1.email) as user1_name,
-              COALESCE(cl2.client_name, u2.email) as user2_name,
+              COALESCE(cl1.client_name, cm1.member_name, u1.email) as user1_name,
+              COALESCE(cl2.client_name, cm2.member_name, u2.email) as user2_name,
               'Admin' as other_user_name,
               CASE
                 WHEN c.user1_id = ? THEN c.user2_id
@@ -297,6 +299,8 @@ module.exports = function (app) {
             LEFT JOIN longtermhire_user u2 ON c.user2_id = u2.id
             LEFT JOIN longtermhire_client cl1 ON u1.id = cl1.user_id
             LEFT JOIN longtermhire_client cl2 ON u2.id = cl2.user_id
+            LEFT JOIN longtermhire_company_member cm1 ON u1.id = cm1.user_id
+            LEFT JOIN longtermhire_company_member cm2 ON u2.id = cm2.user_id
             WHERE (c.user1_id = ? OR c.user2_id = ?)
             AND (u1.role_id = 'super_admin' OR u2.role_id = 'super_admin')
             ORDER BY c.updated_at DESC
@@ -373,10 +377,11 @@ module.exports = function (app) {
             m.attachment_size,
             m.created_at,
             m.read_at,
-            COALESCE(cl.client_name, u.email) as from_user_name
+            COALESCE(cl.client_name, cm.member_name, u.email) as from_user_name
           FROM longtermhire_chat_messages m
           LEFT JOIN longtermhire_user u ON m.from_user_id = u.id
           LEFT JOIN longtermhire_client cl ON u.id = cl.user_id
+          LEFT JOIN longtermhire_company_member cm ON u.id = cm.user_id
           WHERE ((m.from_user_id = ? AND m.to_user_id = ?) OR (m.from_user_id = ? AND m.to_user_id = ?))
           ORDER BY m.created_at DESC
           LIMIT ? OFFSET ?

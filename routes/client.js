@@ -48,6 +48,7 @@ module.exports = function (app) {
           company_name,
           email,
           phone,
+          address,
           username: providedUsername,
           password: providedPassword,
           equipment,
@@ -115,14 +116,14 @@ module.exports = function (app) {
 
         // Generate username and password
         const username =
-          email.split("@")[0] + Math.random().toString(36).substring(2, 6);
-        const plainPassword = Math.random().toString(36).substring(2, 10);
+          providedUsername || email.split("@")[0] + Math.random().toString(36).substring(2, 6);
+        const plainPassword = providedPassword || Math.random().toString(36).substring(2, 10);
 
         // Hash the password for database storage
         const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-        console.log("Generated username:", username);
-        console.log("Generated password:", plainPassword);
+        console.log("Using username:", username);
+        console.log("Using password:", plainPassword);
         console.log("Password hashed for database storage");
 
         // Create user account in database using raw SQL
@@ -209,8 +210,8 @@ module.exports = function (app) {
         console.log("About to insert client with raw SQL...");
 
         const clientInsertSQL = `
-          INSERT INTO longtermhire_client (user_id, client_name, company_name, company_id, phone, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO longtermhire_client (user_id, client_name, company_name, company_id, phone, address, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         console.log("Client insert SQL:", clientInsertSQL);
@@ -220,6 +221,7 @@ module.exports = function (app) {
           company_name,
           companyId,
           phone || null,
+          address || null,
           currentTime,
           currentTime,
         ]);
@@ -230,6 +232,7 @@ module.exports = function (app) {
           company_name,
           companyId,
           phone || null,
+          address || null,
           currentTime,
           currentTime,
         ]);
@@ -281,6 +284,56 @@ module.exports = function (app) {
             console.error("❌ Error assigning pricing:", pricingError);
             // Continue with client creation even if pricing assignment fails
           }
+        }
+
+        // --- Auto-create a default quote for the new client ---
+        console.log("📝 Auto-creating default quote for client...");
+        try {
+          // 1. Get Admin Company Settings for default values
+          const adminSettingsSQL = `SELECT * FROM longtermhire_company_settings LIMIT 1`;
+          const adminSettings = await sdk.rawQuery(adminSettingsSQL);
+          const settings = adminSettings && adminSettings.length > 0 ? adminSettings[0] : null;
+
+          // 2. Generate Next Quote ID
+          const QuoteModel = require("../models/quote");
+          const quoteModel = new QuoteModel(sdk);
+          const quoteId = await quoteModel.generateQuoteId();
+
+          // 3. Insert Quote
+          const quoteInsertSQL = `
+            INSERT INTO longtermhire_quote (
+              quote_id, company_id, client_user_id, company_name, company_address, 
+              company_email, company_logo, quote_expires_after, produce_quote_for, 
+              gst_percentage, terms_of_hire, status, created_by, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `;
+
+          // Use admin company logo if available, else null (frontend will handle fallback to longtermhire logo if needed)
+          // Actually, let's explicitly set the default logo if not in settings as per user request
+          const defaultLogo = "/login-logo.png";
+          const companyLogo = settings?.company_logo || defaultLogo;
+
+          await sdk.rawQuery(quoteInsertSQL, [
+            quoteId,
+            companyId,
+            userId,
+            company_name,
+            address || "",
+            email,
+            companyLogo,
+            7, // Default: quote_expires_after
+            12, // Default: produce_quote_for
+            15.00, // Default: gst_percentage
+            null, // terms_of_hire
+            'Active',
+            req.user_id, // created_by (admin)
+            currentTime,
+            currentTime
+          ]);
+          console.log(`✅ Default quote ${quoteId} created successfully`);
+        } catch (quoteError) {
+          console.error("❌ Error auto-creating quote:", quoteError);
+          // Don't fail the whole request if quote creation fails
         }
 
         // Send invitation email to client
@@ -468,6 +521,7 @@ module.exports = function (app) {
           c.company_name,
           c.company_id,
           c.phone,
+          c.address,
           c.created_at,
           c.updated_at,
           u.email,
@@ -502,6 +556,36 @@ module.exports = function (app) {
           limit,
           offset,
         ]);
+
+        // Batch fetch equipment assignments for all clients in the result set
+        if (clients.length > 0) {
+          const userIds = clients.map((c) => c.user_id);
+          const placeholders = userIds.map(() => "?").join(",");
+          const equipmentAssignmentsSQL = `
+            SELECT ce.client_user_id, ce.equipment_id, ei.equipment_name, ei.category_name, ei.availability
+            FROM longtermhire_client_equipment ce
+            JOIN longtermhire_equipment_item ei ON ce.equipment_id = ei.id
+            WHERE ce.client_user_id IN (${placeholders})
+          `;
+          const allAssignments = await sdk.rawQuery(
+            equipmentAssignmentsSQL,
+            userIds
+          );
+
+          // Map assignments back to clients
+          clients.forEach((client) => {
+            client.equipment = allAssignments
+              .filter((a) => a.client_user_id === client.user_id)
+              .map((a) => ({
+                id: a.equipment_id,
+                equipment_id: a.equipment_id,
+                equipment_name: a.equipment_name,
+                category_name: a.category_name,
+                availability: a.availability,
+              }));
+          });
+        }
+
         const countResult = await sdk.rawQuery(countQuery, searchParams);
         const total = countResult[0]?.total || 0;
 
@@ -538,7 +622,7 @@ module.exports = function (app) {
         const sdk = app.get("sdk");
         sdk.setProjectId("longtermhire");
 
-        const { client_name, company_name, phone, email } = req.body;
+        const { client_name, company_name, phone, address, email } = req.body;
         const clientId = req.params.id;
 
         // Get client to find user_id
@@ -562,13 +646,14 @@ module.exports = function (app) {
         // Update client table
         const updateClientSQL = `
           UPDATE longtermhire_client
-          SET client_name = ?, company_name = ?, phone = ?, updated_at = ?
+          SET client_name = ?, company_name = ?, phone = ?, address = ?, updated_at = ?
           WHERE id = ?
         `;
         await sdk.rawQuery(updateClientSQL, [
           client_name,
           company_name,
           phone,
+          address,
           currentTime,
           clientId,
         ]);
@@ -855,10 +940,8 @@ module.exports = function (app) {
               currentTime,
             ]);
             console.log(
-              `Assigned custom discount to client ${client_user_id}: ${
-                custom_discount?.discountValue
-              }${
-                custom_discount?.discountType === "percentage" ? "%" : "$"
+              `Assigned custom discount to client ${client_user_id}: ${custom_discount?.discountValue
+              }${custom_discount?.discountType === "percentage" ? "%" : "$"
               } off`
             );
           } else {
@@ -1014,7 +1097,7 @@ module.exports = function (app) {
 
         // Try company_member table first (V2 - preferred)
         const companyMemberQuery = `
-          SELECT cm.company_id, co.company_name, co.ad_text, co.ad_text_destination
+          SELECT cm.company_id, co.company_name, co.header_ad_text, co.sticky_ad_text
           FROM longtermhire_company_member cm
           LEFT JOIN longtermhire_company co ON cm.company_id = co.id
           WHERE cm.user_id = ?
@@ -1030,7 +1113,7 @@ module.exports = function (app) {
         } else {
           // Fallback to longtermhire_client table (V1)
           const clientQuery = `
-            SELECT c.company_name, c.company_id, co.ad_text, co.ad_text_destination
+            SELECT c.company_name, c.company_id, co.header_ad_text, co.sticky_ad_text
             FROM longtermhire_client c
             LEFT JOIN longtermhire_company co ON c.company_id = co.id
             WHERE c.user_id = ?
@@ -1060,9 +1143,8 @@ module.exports = function (app) {
           data: {
             company_id: clientData.company_id,
             company_name: clientData.company_name,
-            ad_text: clientData.ad_text || "",
-            ad_text_destination:
-              clientData.ad_text_destination || "To Sticky Note",
+            header_ad_text: clientData.header_ad_text || "",
+            sticky_ad_text: clientData.sticky_ad_text || "",
             company_logo: userData?.company_logo || "",
           },
           message: "Company settings retrieved successfully",
