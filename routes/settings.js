@@ -37,7 +37,10 @@ module.exports = function (app) {
                             company_email: "",
                             company_phone: "",
                             company_logo: null,
-
+                            default_quote_expires_after: 7,
+                            default_produce_quote_for: 12,
+                            default_gst_percentage: 15,
+                            default_terms_of_hire: "",
                         },
                     });
                 }
@@ -67,7 +70,10 @@ module.exports = function (app) {
                     company_email,
                     company_phone,
                     company_logo,
-
+                    default_quote_expires_after,
+                    default_produce_quote_for,
+                    default_gst_percentage,
+                    default_terms_of_hire,
                 } = req.body;
 
                 // Check if settings exist
@@ -85,7 +91,10 @@ module.exports = function (app) {
               company_email = ?,
               company_phone = ?,
               company_logo = ?,
-             
+              default_quote_expires_after = ?,
+              default_produce_quote_for = ?,
+              default_gst_percentage = ?,
+              default_terms_of_hire = ?,
               updated_at = NOW()
             WHERE id = ?
           `;
@@ -96,15 +105,18 @@ module.exports = function (app) {
                         company_email || null,
                         company_phone || null,
                         company_logo || null,
-
+                        default_quote_expires_after || 7,
+                        default_produce_quote_for || 12,
+                        default_gst_percentage || 15,
+                        default_terms_of_hire || null,
                         existing[0].id,
                     ]);
                 } else {
                     // Insert new settings
                     const insertSQL = `
             INSERT INTO longtermhire_company_settings 
-            (company_name, company_address, company_email, company_phone, company_logo, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+            (company_name, company_address, company_email, company_phone, company_logo, default_quote_expires_after, default_produce_quote_for, default_gst_percentage, default_terms_of_hire, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
           `;
 
                     result = await sdk.rawQuery(insertSQL, [
@@ -113,6 +125,10 @@ module.exports = function (app) {
                         company_email || null,
                         company_phone || null,
                         company_logo || null,
+                        default_quote_expires_after || 7,
+                        default_produce_quote_for || 12,
+                        default_gst_percentage || 15,
+                        default_terms_of_hire || null,
                     ]);
                 }
 
@@ -125,6 +141,10 @@ module.exports = function (app) {
                         company_email,
                         company_phone,
                         company_logo,
+                        default_quote_expires_after,
+                        default_produce_quote_for,
+                        default_gst_percentage,
+                        default_terms_of_hire,
                     },
                 });
             } catch (error) {

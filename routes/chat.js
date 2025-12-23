@@ -1081,6 +1081,7 @@ module.exports = function (app) {
         // Note: recent_messages only counts unread messages FROM clients TO admins (admin dashboard perspective)
         const statsSQL = `
           SELECT
+            (SELECT COUNT(*) FROM longtermhire_company) as total_companies,
             (SELECT COUNT(*) FROM longtermhire_user WHERE role_id = 'member') as total_clients,
             (SELECT COUNT(*) FROM longtermhire_equipment_item) as total_equipment,
             (SELECT COUNT(*) FROM longtermhire_chat_messages m
