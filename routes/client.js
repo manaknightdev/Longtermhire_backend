@@ -340,7 +340,7 @@ module.exports = function (app) {
         console.log("📧 Sending invitation email to:", email);
 
         try {
-          const loginUrl = "https://www.longtermhire.personalsoftware.space/client/login";
+          const loginUrl = "https://longtermhire.personalsoftware.space/client/login";
 
           // Create HTML email template
           const htmlContent = `
@@ -446,7 +446,7 @@ module.exports = function (app) {
               email: email,
               email_sent: false,
               email_error: emailError.message,
-              login_url: "https://www.longtermhire.personalsoftware.space/client/login",
+              login_url: "https://longtermhire.personalsoftware.space/client/login",
               equipment_assigned:
                 equipment && Array.isArray(equipment) ? equipment.length : 0,
               pricing_assigned: pricing ? true : false,
