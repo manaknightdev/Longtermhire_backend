@@ -340,7 +340,7 @@ module.exports = function (app) {
         console.log("📧 Sending invitation email to:", email);
 
         try {
-          const loginUrl = "https://www.longtermhire.com/client/login";
+          const loginUrl = "https://www.longtermhire.personalsoftware.space/client/login";
 
           // Create HTML email template
           const htmlContent = `
@@ -349,7 +349,7 @@ module.exports = function (app) {
                 
                 <!-- Header with Logo -->
                 <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
-                  <img src="https://longtermhire.manaknightdigital.com/login-logo.png" 
+                  <img src="https://longtermhire.personalsoftware.space/login-logo.png" 
                        alt="" 
                        style="width: 240px; height: 135px; margin-bottom: 15px;">
                   <h1 style="color: #E5E5E5; margin: 0; font-size: 28px; font-weight: 400;">Welcome to Long Term Hire</h1>
@@ -446,7 +446,7 @@ module.exports = function (app) {
               email: email,
               email_sent: false,
               email_error: emailError.message,
-              login_url: "https://www.longtermhire.com/client/login",
+              login_url: "https://www.longtermhire.personalsoftware.space/client/login",
               equipment_assigned:
                 equipment && Array.isArray(equipment) ? equipment.length : 0,
               pricing_assigned: pricing ? true : false,
