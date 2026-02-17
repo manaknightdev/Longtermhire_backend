@@ -159,7 +159,7 @@ class ChatNotificationService {
 
               <!-- Header with Logo -->
               <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
-                <img src="https://longtermhire.personalsoftware.space/login-logo.png"
+                <img src="https://longtermhire.com/login-logo.png"
                      alt="Longterm Hire Logo"
                      style="width: 240px; height: 135px; margin-bottom: 15px;">
                 <h1 style="color: #E5E5E5; margin: 0; font-size: 24px; font-weight: 400;">💬 New Client Message</h1>
@@ -205,7 +205,7 @@ class ChatNotificationService {
 
               <!-- Login Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://www.longtermhire.personalsoftware.space/login" 
+                <a href="https://www.longtermhire.com/login" 
                    style="background: #FDCE06; color: #1F1F20; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; border: 1px solid #FDCE06;">
                   🔗 Login to View Message
                 </a>
@@ -238,7 +238,7 @@ class ChatNotificationService {
 
               <!-- Header with Logo -->
               <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333333;">
-                <img src="https://longtermhire.personalsoftware.space/login-logo.png"
+                <img src="https://longtermhire.com/login-logo.png"
                      alt="Longterm Hire Logo"
                      style="width: 240px; height: 135px; margin-bottom: 15px;">
                 <h1 style="color: #E5E5E5; margin: 0; font-size: 24px; font-weight: 400;">💬 New Message Available</h1>
@@ -288,7 +288,7 @@ class ChatNotificationService {
 
               <!-- Login Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://www.longtermhire.personalsoftware.space/client/login" 
+                <a href="https://www.longtermhire.com/client/login" 
                    style="background: #FDCE06; color: #1F1F20; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; border: 1px solid #FDCE06;">
                   🔗 Login to View Message
                 </a>
